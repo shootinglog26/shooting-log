@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>UK Shooting Log</title>
+<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shooting Log">
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230d1117'/><circle cx='96' cy='96' r='70' fill='none' stroke='%23d4a843' stroke-width='8'/><circle cx='96' cy='96' r='45' fill='none' stroke='%23d4a843' stroke-width='6'/><circle cx='96' cy='96' r='20' fill='none' stroke='%23d4a843' stroke-width='5'/><circle cx='96' cy='96' r='6' fill='%23d4a843'/></svg>">
+<link rel="manifest" href='data:application/manifest+json,{"name":"UK Shooting Log","short_name":"Shooting Log","start_url":".","scope":".","display":"standalone","orientation":"portrait","background_color":"%230d1117","theme_color":"%230d1117","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27><rect width=%27192%27 height=%27192%27 rx=%2732%27 fill=%27%230d1117%27/><circle cx=%2796%27 cy=%2796%27 r=%2770%27 fill=%27none%27 stroke=%27%23d4a843%27 stroke-width=%278%27/><circle cx=%2796%27 cy=%2796%27 r=%2745%27 fill=%27none%27 stroke=%27%23d4a843%27 stroke-width=%276%27/><circle cx=%2796%27 cy=%2796%27 r=%2720%27 fill=%27none%27 stroke=%27%23d4a843%27 stroke-width=%275%27/><circle cx=%2796%27 cy=%2796%27 r=%276%27 fill=%27%23d4a843%27/></svg>","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"},{"src":"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 512 512%27><rect width=%27512%27 height=%27512%27 rx=%2796%27 fill=%27%230d1117%27/><circle cx=%27256%27 cy=%27256%27 r=%27186%27 fill=%27none%27 stroke=%27%23d4a843%27 stroke-width=%2722%27/><circle cx=%27256%27 cy=%27256%27 r=%27120%27 fill=%27none%27 stroke=%27%23d4a843%27 stroke-width=%2716%27/><circle cx=%27256%27 cy=%27256%27 r=%2754%27 fill=%27none%27 stroke=%27%23d4a843%27 stroke-width=%2713%27/><circle cx=%27256%27 cy=%27256%27 r=%2716%27 fill=%27%23d4a843%27/></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -37,7 +44,13 @@ const CALIBRES = [
 const FIREARM_TYPES = ["Rifle","Shotgun","Pistol","Air Rifle","Rimfire","Centerfire"];
 const ACTION_TYPES = ["Bolt Action","Semi-Auto","Lever Action","Pump Action","Break Action","Over & Under","Side by Side","Single Shot","Straight Pull","Pre-charged Pneumatic"];
 
-const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} };
+const save = (key, val) => {
+  try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+  catch(e) {
+    try { alert("⚠ Couldn't save your data — device storage is full. Export a backup now, and remove some photos to free space."); } catch(_){}
+    return false;
+  }
+};
 const load = (key, def) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; } };
 
 const ICONS = {
@@ -151,7 +164,23 @@ function App() {
   function readImg(file,cb){
     if(!file||!file.type.startsWith("image/"))return;
     const r=new FileReader();
-    r.onload=e=>cb(e.target.result);
+    r.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        // Resize so the longest side is <= 1000px, then compress to JPEG
+        const MAX=1000;
+        let {width,height}=img;
+        if(width>height && width>MAX){ height=Math.round(height*MAX/width); width=MAX; }
+        else if(height>MAX){ width=Math.round(width*MAX/height); height=MAX; }
+        const c=document.createElement("canvas");
+        c.width=width; c.height=height;
+        c.getContext("2d").drawImage(img,0,0,width,height);
+        try { cb(c.toDataURL("image/jpeg",0.7)); }
+        catch(err){ cb(e.target.result); } // fallback to original if canvas tainted
+      };
+      img.onerror=()=>cb(e.target.result);
+      img.src=e.target.result;
+    };
     r.readAsDataURL(file);
   }
 
@@ -231,6 +260,44 @@ function App() {
   `;
 
   // FEO export
+  // ---- BACKUP / RESTORE ----
+  function exportData() {
+    const data = {
+      version: 1, exported: new Date().toISOString(),
+      firearms, locations, sessions, ammoStock, land, maintenance, feo, theme
+    };
+    const b = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    const u = URL.createObjectURL(b);
+    const a = document.createElement("a");
+    a.href = u;
+    a.download = `shooting-log-backup-${td()}.json`;
+    a.click();
+    URL.revokeObjectURL(u);
+  }
+
+  function importData(file) {
+    if(!file) return;
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const d = JSON.parse(e.target.result);
+        if(!confirm("This will REPLACE all current data with the backup. Continue?")) return;
+        if(d.firearms) setFirearms(d.firearms);
+        if(d.locations) setLocations(d.locations);
+        if(d.sessions) setSessions(d.sessions);
+        if(d.ammoStock) setAmmoStock(d.ammoStock);
+        if(d.land) setLand(d.land);
+        if(d.maintenance) setMaintenance(d.maintenance);
+        if(d.feo) setFeo(d.feo);
+        if(d.theme) setTheme(d.theme);
+        alert("Backup restored successfully.");
+      } catch(err) {
+        alert("Could not read that file — make sure it's a valid backup .json");
+      }
+    };
+    r.readAsText(file);
+  }
+
   function generateFEO() {
     const rows = sessions.map(s => {
       const loc = locations.find(l=>l.id===s.locationId);
@@ -637,6 +704,22 @@ function App() {
           </div>
         </div>
         <div className="card">
+          <div className="ct"><Icon name="doc" size={15}/>Backup &amp; Restore</div>
+          <div style={{background:t.accentBg,border:`1px solid ${t.accent}44`,borderRadius:8,padding:9,marginBottom:11,fontSize:12,color:t.textMuted,lineHeight:1.5}}>
+            <strong style={{color:t.accent}}>Important:</strong> this app stores data in your browser, which can be cleared if you reinstall, switch device, or open a different copy of the file. Export a backup regularly and keep the .json file somewhere safe (e.g. cloud storage). You can restore it any time, on any device.
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button className="btn bsl" onClick={exportData}><Icon name="doc" size={13}/>Export Backup</button>
+            <label className="btn" style={{cursor:"pointer"}}>
+              <Icon name="plus" size={13}/>Restore Backup
+              <input type="file" accept="application/json,.json" style={{display:"none"}} onChange={e=>importData(e.target.files[0])}/>
+            </label>
+          </div>
+          <p style={{fontSize:11,color:t.textMuted,marginTop:8}}>
+            Currently storing: {firearms.length} firearms · {sessions.length} sessions · {ammoStock.length} ammo batches · {land.length} land · {maintenance.length} service records
+          </p>
+        </div>
+        <div className="card">
           <div className="ct"><Icon name="doc" size={15}/>Certificate &amp; Personal Details</div>
           <div style={{background:t.accentBg,border:`1px solid ${t.accent}44`,borderRadius:8,padding:9,marginBottom:11,fontSize:12,color:t.textMuted}}>
             You will be alerted 6 months before certificate expiry.
@@ -1000,5 +1083,11 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </body>
 </html>
