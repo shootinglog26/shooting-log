@@ -37,14 +37,41 @@ const UK_QUARRY = [
 const WEATHER_CONDITIONS = ["Clear","Overcast","Light Rain","Heavy Rain","Snow","Fog","Windy","Sunny","Partly Cloudy","Frost"];
 const WIND_DIRECTIONS = ["N","NE","E","SE","S","SW","W","NW","Calm"];
 const LOCATION_TYPES = ["Farm","Clay Ground","Target Range","Woodland","Moorland","Marsh","Private Land","Shooting Club"];
-const CALIBRES = [
-  ".17 HMR",".17 Hornet",".22 LR",".22 WMR",".222 Rem",".223 Rem",".243 Win",
-  ".25-06",".270 Win",".308 Win",".30-06",".300 Win Mag",".303 British",".338 Lapua",
-  "6.5 Creedmoor","7mm Rem Mag",".357 Mag",".44 Mag",".45 ACP","9mm",
-  "12 Bore","20 Bore","28 Bore",".410","Other"
-];
-const FIREARM_TYPES = ["Rifle","Shotgun","Pistol","Air Rifle","Rimfire","Centerfire"];
-const ACTION_TYPES = ["Bolt Action","Semi-Auto","Lever Action","Pump Action","Break Action","Over & Under","Side by Side","Single Shot","Straight Pull","Pre-charged Pneumatic"];
+const FIREARM_TYPES = ["Rimfire","Centrefire","Shotgun","Air Rifle","Air Pistol"];
+
+// Calibres per firearm type
+const CALIBRES_BY_TYPE = {
+  "Rimfire": [".17 HMR",".17 Mach 2",".22 BB Cap",".22 CB Cap",".22 Short",".22 Long",".22 LR",".22 WMR",".22 Hornet"],
+  "Centrefire": [".17 Hornet",".204 Ruger",".22-250",".222 Rem",".223 Rem",".243 Win","6mm Creedmoor","6.5 Creedmoor","6.5x55",".25-06",".260 Rem",".270 Win","7mm-08","7mm Rem Mag",".308 Win",".30-06",".300 Win Mag",".303 British",".338 Lapua",".375 H&H"],
+  "Shotgun": ["12 Bore","16 Bore","20 Bore","28 Bore",".410","9mm Garden Gun"],
+  "Air Rifle": [".177",".20",".22",".25",".30",".303",".357",".45",".50"],
+  "Air Pistol": [".177",".22",".25"]
+};
+
+// Actions per firearm type
+const ACTIONS_BY_TYPE = {
+  "Rimfire": ["Bolt Action","Semi-Auto","Lever Action","Pump Action","Single Shot","Straight Pull"],
+  "Centrefire": ["Bolt Action","Semi-Auto","Lever Action","Straight Pull","Single Shot","Falling Block"],
+  "Shotgun": ["Over & Under","Side by Side","Pump Action","Semi-Auto","Single Shot","Bolt Action","Lever Action"],
+  "Air Rifle": ["Pre-charged Pneumatic (PCP)","Break Barrel","Under Lever","Side Lever","CO2","Spring Piston","Gas Ram"],
+  "Air Pistol": ["Pre-charged Pneumatic (PCP)","Break Barrel","CO2","Single Stroke Pneumatic","Spring Piston"]
+};
+
+// Ammunition types (for ammo stock entries)
+const AMMO_TYPES_BY_FTYPE = {
+  "Rimfire": ["Hollow Point","Solid","Subsonic","Hyper-Velocity","Match","Segmented","Shot"],
+  "Centrefire": ["Soft Point","Hollow Point","FMJ","Ballistic Tip","Match/BTHP","Bonded","Monolithic","Tracer","Subsonic"],
+  "Shotgun": ["Game Shot","Clay/Target","Steel Shot","Bismuth","Tungsten","Slug","Buckshot","Blank"],
+  "Air Rifle": ["Domed","Wadcutter","Hollow Point","Pointed","Round Ball","Slug","Polymer-tipped"],
+  "Air Pistol": ["Domed","Wadcutter","Hollow Point","Round Ball"]
+};
+
+// Combined for places we still need the master list
+const CALIBRES = [...new Set(Object.values(CALIBRES_BY_TYPE).flat())].sort();
+const ACTION_TYPES = [...new Set(Object.values(ACTIONS_BY_TYPE).flat())];
+
+// Shoot purposes that involve quarry (the rest hide the quarry bag)
+const QUARRY_PURPOSES = ["pest","stalking","rough","driven","wildfowling"];
 
 const save = (key, val) => {
   try { localStorage.setItem(key, JSON.stringify(val)); return true; }
@@ -128,7 +155,7 @@ function App() {
 
   const blankFirearm = {name:"",type:"",action:"",calibre:"",serial:"",manufacturer:"",notes:"",photo:null};
   const blankSession = {date:td(),locationId:"",firearmId:"",ammoId:"",rounds:0,weather:"",wind:"",windSpeed:"",temp:"",quarryBag:{},notes:"",targetPhotos:[],distance:"",purpose:"target"};
-  const blankAmmo = {calibre:"",qty:0,brand:"",type:"",purchased:td()};
+  const blankAmmo = {calibre:"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""};
   const blankLand = {name:"",acres:"",county:"",owner:"",contact:"",permission:td(),notes:"",species:[]};
   const blankMaint = {firearmId:"",date:td(),type:"",parts:"",notes:"",nextDue:""};
 
@@ -247,6 +274,7 @@ function App() {
     .pbg{background:${t.border};border-radius:4px;height:7px;overflow:hidden;margin-top:4px;}
     .pb{height:100%;border-radius:4px;background:${t.accent};transition:width .3s;}
     .ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+    .ov2{z-index:300;background:rgba(0,0,0,.6);}
     .modal{background:${t.card};border:1px solid ${t.border};border-radius:16px 16px 0 0;padding:18px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
     .mt{font-family:${ff};font-size:15px;color:${t.accent};margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
     .xb{background:none;border:none;color:${t.textMuted};cursor:pointer;font-size:22px;line-height:1;}
@@ -421,7 +449,7 @@ function App() {
                 <h3 style={{fontFamily:ff,color:t.text,fontSize:14}}>{f.name}</h3>
                 <div style={{display:"flex",gap:5,flexShrink:0}}>
                   <button className="btn bsm" onClick={()=>{setEditItem({...f,_type:"firearm"});setNewFirearm(f);setShowFirearmForm(true);}}>Edit</button>
-                  <button className="btn bsm bdg" onClick={()=>setFirearms(fl=>fl.filter(x=>x.id!==f.id))}><Icon name="trash" size={12}/></button>
+                  <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this firearm?"))setFirearms(fl=>fl.filter(x=>x.id!==f.id));}}><Icon name="trash" size={12}/></button>
                 </div>
               </div>
               <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
@@ -455,8 +483,9 @@ function App() {
           return <div key={a.id} className="card">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
-                <h3 style={{fontFamily:ff,fontSize:14}}>{a.calibre}</h3>
-                {a.brand&&<p style={{fontSize:12,color:t.textMuted}}>{a.brand}{a.type?` · ${a.type}`:""}</p>}
+                <h3 style={{fontFamily:ff,fontSize:14}}>{a.calibre}{a.weight?` · ${a.weight}gr`:""}</h3>
+                {(a.brand||a.type)&&<p style={{fontSize:12,color:t.textMuted}}>{a.brand||"Unbranded"}{a.type?` · ${a.type}`:""}</p>}
+                {a.lot&&<p style={{fontSize:11,color:t.textMuted}}>Lot: {a.lot}</p>}
                 <p style={{fontSize:11,color:t.textMuted,marginTop:2}}>Purchased: {fmt(a.purchased)} · Used: {used}</p>
               </div>
               <div style={{textAlign:"right"}}>
@@ -466,9 +495,10 @@ function App() {
             </div>
             <div className="pbg" style={{marginTop:9}}><div className="pb" style={{width:`${Math.min(100,(a.qty/(a.qty+used||1))*100)}%`,background:a.qty<50?t.danger:t.accent}}/></div>
             {a.qty<50&&<p style={{fontSize:11,color:t.danger,marginTop:5}}>⚠ Low stock</p>}
-            <div style={{marginTop:8,display:"flex",gap:7}}>
-              <button className="btn bsm" onClick={()=>{const n=parseInt(prompt("Add rounds:")||0);if(n>0)setAmmoStock(s=>s.map(x=>x.id===a.id?{...x,qty:x.qty+n}:x));}}>+ Add Rounds</button>
-              <button className="btn bsm bdg" onClick={()=>setAmmoStock(s=>s.filter(x=>x.id!==a.id))}><Icon name="trash" size={12}/></button>
+            <div style={{marginTop:8,display:"flex",gap:7,flexWrap:"wrap"}}>
+              <button className="btn bsm" onClick={()=>{const n=parseInt(prompt("Add rounds:")||0);if(n>0)setAmmoStock(s=>s.map(x=>x.id===a.id?{...x,qty:x.qty+n}:x));}}>+ Rounds</button>
+              <button className="btn bsm" onClick={()=>{setEditItem({...a,_type:"ammo"});setNewAmmo(a);setShowAmmoForm(true);}}>Edit</button>
+              <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this ammo batch?"))setAmmoStock(s=>s.filter(x=>x.id!==a.id));}}><Icon name="trash" size={12}/></button>
             </div>
           </div>;
         })}
@@ -497,7 +527,7 @@ function App() {
             </div>
             <div style={{display:"flex",gap:5,flexShrink:0}}>
               <button className="btn bsm" onClick={()=>{setEditItem({...l,_type:"location"});setNewLocation(l);setShowLocationForm(true);}}>Edit</button>
-              <button className="btn bsm bdg" onClick={()=>setLocations(ll=>ll.filter(x=>x.id!==l.id))}><Icon name="trash" size={12}/></button>
+              <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this location?"))setLocations(ll=>ll.filter(x=>x.id!==l.id));}}><Icon name="trash" size={12}/></button>
             </div>
           </div>
         ))}
@@ -523,7 +553,8 @@ function App() {
               <div>
                 <h3 style={{fontFamily:ff,fontSize:14}}>{fmt(s.date)}</h3>
                 <p style={{fontSize:13,color:t.textMuted,marginTop:2}}>{loc?.name||"—"} · {gun?.name||"—"} ({gun?.calibre||"—"})</p>
-                {ammoBatch&&<p style={{fontSize:11,color:t.textMuted,marginTop:2}}>Ammo: {ammoBatch.brand||"Unbranded"}{ammoBatch.type?` ${ammoBatch.type}`:""}</p>}
+                {ammoBatch&&<p style={{fontSize:11,color:t.textMuted,marginTop:2}}>Ammo: {ammoBatch.brand||"Unbranded"}{ammoBatch.weight?` ${ammoBatch.weight}gr`:""}{ammoBatch.type?` ${ammoBatch.type}`:""}</p>}
+                {s.purpose&&<div style={{marginTop:5}}><span className="badge" style={{borderColor:t.accent,color:t.accent}}>{({target:"Target",pest:"Pest Control",stalking:"Stalking",rough:"Rough",driven:"Driven Game",wildfowling:"Wildfowling",clay:"Clay",zero:"Zeroing",practice:"Practice"})[s.purpose]||s.purpose}</span></div>}
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontFamily:ff,color:t.accent}}>{s.rounds} rds</div>
@@ -543,8 +574,9 @@ function App() {
             {s.targetPhotos?.length>0&&<div style={{display:"flex",gap:5,marginTop:9,overflowX:"auto"}}>
               {s.targetPhotos.map((p,i)=><img key={i} src={p} alt="" style={{height:76,width:76,objectFit:"cover",borderRadius:8,border:`1px solid ${t.border}`,flexShrink:0}}/>)}
             </div>}
-            <div style={{marginTop:8}}>
-              <button className="btn bsm bdg" onClick={()=>setSessions(ss=>ss.filter(x=>x.id!==s.id))}><Icon name="trash" size={12}/> Delete</button>
+            <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+              <button className="btn bsm" onClick={()=>{const {id,...rest}=s;setNewSession({...rest,date:td(),targetPhotos:[],notes:""});setShowSessionForm(true);}}>Duplicate</button>
+              <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this session?"))setSessions(ss=>ss.filter(x=>x.id!==s.id));}}><Icon name="trash" size={12}/> Delete</button>
             </div>
           </div>;
         })}
@@ -566,7 +598,7 @@ function App() {
               <h3 style={{fontFamily:ff}}>{l.name}</h3>
               <div style={{display:"flex",gap:5,flexShrink:0}}>
                 <button className="btn bsm" onClick={()=>{setEditItem({...l,_type:"land"});setNewLand(l);setShowLandForm(true);}}>Edit</button>
-                <button className="btn bsm bdg" onClick={()=>setLand(ll=>ll.filter(x=>x.id!==l.id))}><Icon name="trash" size={12}/></button>
+                <button className="btn bsm bdg" onClick={()=>{if(confirm("Remove this land?"))setLand(ll=>ll.filter(x=>x.id!==l.id));}}><Icon name="trash" size={12}/></button>
               </div>
             </div>
             <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:7}}>
@@ -608,7 +640,7 @@ function App() {
               {m.notes&&<p style={{marginTop:2}}>{m.notes}</p>}
               {m.nextDue&&<p style={{marginTop:4,color:daysUntil(m.nextDue)<30?t.danger:t.success,fontSize:11}}>Next service: {fmt(m.nextDue)}</p>}
             </div>
-            <button className="btn bsm bdg" onClick={()=>setMaintenance(mm=>mm.filter(x=>x.id!==m.id))}><Icon name="trash" size={12}/></button>
+            <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this record?"))setMaintenance(mm=>mm.filter(x=>x.id!==m.id));}}><Icon name="trash" size={12}/></button>
           </div>;
         })}
       </div>
@@ -756,25 +788,27 @@ function App() {
       else setFirearms(f=>[...f,{...newFirearm,id:gid()}]);
       setShowFirearmForm(false); setEditItem(null); setNewFirearm(blankFirearm);
     };
-    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowFirearmForm(false);}}>
+    return <div className={`ov ${showSessionForm?"ov2":""}`} onClick={e=>{if(e.target===e.currentTarget)setShowFirearmForm(false);}}>
       <div className="modal">
         <div className="mt">{editItem?"Edit Firearm":"Add Firearm"}<button className="xb" onClick={()=>setShowFirearmForm(false)}>×</button></div>
         <div className="fld"><div className="lbl">Name *</div><input className="inp" value={newFirearm.name} onChange={e=>setNewFirearm(f=>({...f,name:e.target.value}))} placeholder="e.g. Tikka T3x .243"/></div>
         <div className="row">
-          <div className="fld"><div className="lbl">Type</div>
-            <select className="inp" value={newFirearm.type} onChange={e=>setNewFirearm(f=>({...f,type:e.target.value}))}>
-              <option value="">Select</option>{FIREARM_TYPES.map(x=><option key={x}>{x}</option>)}
+          <div className="fld"><div className="lbl">Type *</div>
+            <select className="inp" value={newFirearm.type} onChange={e=>setNewFirearm(f=>({...f,type:e.target.value,calibre:"",action:""}))}>
+              <option value="">Select type first</option>{FIREARM_TYPES.map(x=><option key={x}>{x}</option>)}
             </select>
           </div>
           <div className="fld"><div className="lbl">Calibre *</div>
-            <select className="inp" value={newFirearm.calibre} onChange={e=>setNewFirearm(f=>({...f,calibre:e.target.value}))}>
-              <option value="">Select</option>{CALIBRES.map(x=><option key={x}>{x}</option>)}
+            <select className="inp" value={newFirearm.calibre} onChange={e=>setNewFirearm(f=>({...f,calibre:e.target.value}))} disabled={!newFirearm.type}>
+              <option value="">{newFirearm.type?"Select":"Pick type first"}</option>
+              {(CALIBRES_BY_TYPE[newFirearm.type]||[]).map(x=><option key={x}>{x}</option>)}
             </select>
           </div>
         </div>
         <div className="fld"><div className="lbl">Action</div>
-          <select className="inp" value={newFirearm.action} onChange={e=>setNewFirearm(f=>({...f,action:e.target.value}))}>
-            <option value="">Select action</option>{ACTION_TYPES.map(x=><option key={x}>{x}</option>)}
+          <select className="inp" value={newFirearm.action} onChange={e=>setNewFirearm(f=>({...f,action:e.target.value}))} disabled={!newFirearm.type}>
+            <option value="">{newFirearm.type?"Select action":"Pick type first"}</option>
+            {(ACTIONS_BY_TYPE[newFirearm.type]||[]).map(x=><option key={x}>{x}</option>)}
           </select>
         </div>
         <div className="row">
@@ -805,7 +839,7 @@ function App() {
       else setLocations(l=>[...l,{...newLocation,id:gid()}]);
       setShowLocationForm(false); setEditItem(null); setNewLocation({name:"",type:"",county:"",notes:""});
     };
-    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowLocationForm(false);}}>
+    return <div className={`ov ${showSessionForm?"ov2":""}`} onClick={e=>{if(e.target===e.currentTarget)setShowLocationForm(false);}}>
       <div className="modal">
         <div className="mt">{editItem?"Edit Location":"Add Location"}<button className="xb" onClick={()=>setShowLocationForm(false)}>×</button></div>
         <div className="fld"><div className="lbl">Name *</div><input className="inp" value={newLocation.name} onChange={e=>setNewLocation(l=>({...l,name:e.target.value}))} placeholder="e.g. Home Farm"/></div>
@@ -851,7 +885,7 @@ function App() {
       }
       setShowSessionForm(false); setNewSession(blankSession);
     };
-    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowSessionForm(false);}}>
+    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget)setShowSessionForm(false);}}>
       <div className="modal">
         <div className="mt">New Session<button className="xb" onClick={()=>setShowSessionForm(false)}>×</button></div>
         <div className="row">
@@ -860,12 +894,18 @@ function App() {
             <select className="inp" value={newSession.purpose} onChange={e=>setNewSession(s=>({...s,purpose:e.target.value}))}>
               <option value="target">Target Shooting</option><option value="pest">Pest Control</option>
               <option value="stalking">Deer Stalking</option><option value="rough">Rough Shooting</option>
-              <option value="driven">Driven Game</option><option value="clay">Clay Shooting</option>
+              <option value="driven">Driven Game</option><option value="wildfowling">Wildfowling</option>
+              <option value="clay">Clay Shooting</option><option value="zero">Zeroing / Sighting In</option>
+              <option value="practice">Practice / Training</option>
             </select>
           </div>
         </div>
         <div className="row">
-          <div className="fld"><div className="lbl">Location</div>
+          <div className="fld">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div className="lbl" style={{marginBottom:0}}>Location</div>
+              <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} onClick={()=>{setEditItem(null);setNewLocation({name:"",type:"",county:"",notes:""});setShowLocationForm(true);}}>+ New</button>
+            </div>
             <select className="inp" value={newSession.locationId} onChange={e=>setNewSession(s=>({...s,locationId:e.target.value}))}>
               <option value="">Select</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
@@ -887,11 +927,15 @@ function App() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
               <div className="lbl" style={{marginBottom:0}}>Ammo Used {gun?`(${gun.calibre})`:""}</div>
               <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} disabled={!gun}
-                onClick={()=>{setNewAmmo({...blankAmmo,calibre:gun?.calibre||""});setShowAmmoForm(true);}}>+ Add Stock</button>
+                onClick={()=>{
+                  setEditItem(null);
+                  setNewAmmo({calibre:gun?.calibre||"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""});
+                  setShowAmmoForm(true);
+                }}>+ Add Stock</button>
             </div>
             <select className="inp" value={newSession.ammoId} onChange={e=>setNewSession(s=>({...s,ammoId:e.target.value}))} disabled={!gun}>
               <option value="">{!gun?"Select firearm first":matching.length?"Select ammo batch":"No matching ammo in stock"}</option>
-              {matching.map(a=><option key={a.id} value={a.id}>{a.brand||"Unbranded"}{a.type?` ${a.type}`:""} — {a.qty} rds left</option>)}
+              {matching.map(a=><option key={a.id} value={a.id}>{a.brand||"Unbranded"}{a.weight?` ${a.weight}gr`:""}{a.type?` ${a.type}`:""} — {a.qty} rds left</option>)}
             </select>
           </div>;
         })()}
@@ -924,18 +968,20 @@ function App() {
           <div className="fld"><div className="lbl">Wind Speed (mph)</div><input className="inp" type="number" value={newSession.windSpeed} onChange={e=>setNewSession(s=>({...s,windSpeed:e.target.value}))} placeholder="0"/></div>
           <div className="fld"><div className="lbl">Temperature (°C)</div><input className="inp" type="number" value={newSession.temp} onChange={e=>setNewSession(s=>({...s,temp:e.target.value}))} placeholder="15"/></div>
         </div>
-        <hr className="dvd"/>
-        <div className="lbl" style={{marginBottom:7}}>Quarry Bag — UK Legal Only</div>
-        <div className="qg">
-          {UK_QUARRY.map(q=>(
-            <button key={q} className={`qi ${(newSession.quarryBag[q]||0)>0?"sel":""}`}
-              onClick={()=>setNewSession(s=>({...s,quarryBag:{...s.quarryBag,[q]:(s.quarryBag[q]||0)+1}}))}>
-              {q}{(newSession.quarryBag[q]||0)>0&&<strong> ×{newSession.quarryBag[q]}</strong>}
-            </button>
-          ))}
-        </div>
-        {Object.values(newSession.quarryBag).some(v=>v>0)&&
-          <button className="btn bsm bdg" style={{marginTop:7}} onClick={()=>setNewSession(s=>({...s,quarryBag:{}}))}>Clear Bag</button>}
+        {QUARRY_PURPOSES.includes(newSession.purpose) && <div>
+          <hr className="dvd"/>
+          <div className="lbl" style={{marginBottom:7}}>Quarry Bag — UK Legal Only</div>
+          <div className="qg">
+            {UK_QUARRY.map(q=>(
+              <button key={q} className={`qi ${(newSession.quarryBag[q]||0)>0?"sel":""}`}
+                onClick={()=>setNewSession(s=>({...s,quarryBag:{...s.quarryBag,[q]:(s.quarryBag[q]||0)+1}}))}>
+                {q}{(newSession.quarryBag[q]||0)>0&&<strong> ×{newSession.quarryBag[q]}</strong>}
+              </button>
+            ))}
+          </div>
+          {Object.values(newSession.quarryBag).some(v=>v>0)&&
+            <button className="btn bsm bdg" style={{marginTop:7}} onClick={()=>setNewSession(s=>({...s,quarryBag:{}}))}>Clear Bag</button>}
+        </div>}
         <hr className="dvd"/>
         <div className="fld">
           <div className="lbl">Target Photos</div>
@@ -964,30 +1010,49 @@ function App() {
     if(!showAmmoForm) return null;
     const save = () => {
       if(!newAmmo.calibre) return;
-      const ex=ammoStock.find(a=>a.calibre===newAmmo.calibre&&a.brand===newAmmo.brand);
-      if(ex) setAmmoStock(a=>a.map(x=>x.id===ex.id?{...x,qty:x.qty+parseInt(newAmmo.qty)}:x));
-      else setAmmoStock(a=>[...a,{...newAmmo,qty:parseInt(newAmmo.qty),id:gid()}]);
-      setShowAmmoForm(false); setNewAmmo(blankAmmo);
+      if(editItem?._type==="ammo"){
+        // Edit mode: update in place
+        setAmmoStock(a=>a.map(x=>x.id===editItem.id?{...newAmmo,qty:parseInt(newAmmo.qty)||0,id:editItem.id}:x));
+      } else {
+        const ex=ammoStock.find(a=>a.calibre===newAmmo.calibre&&a.brand===newAmmo.brand&&a.weight===newAmmo.weight);
+        if(ex) setAmmoStock(a=>a.map(x=>x.id===ex.id?{...x,qty:x.qty+(parseInt(newAmmo.qty)||0)}:x));
+        else setAmmoStock(a=>[...a,{...newAmmo,qty:parseInt(newAmmo.qty)||0,id:gid()}]);
+      }
+      setShowAmmoForm(false); setEditItem(null); setNewAmmo(blankAmmo);
     };
-    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowAmmoForm(false);}}>
+    // Detect firearm type from chosen calibre so ammo "type" dropdown can be filtered
+    const ftype = Object.entries(CALIBRES_BY_TYPE).find(([,arr])=>arr.includes(newAmmo.calibre))?.[0];
+    const ammoTypeOpts = ftype?AMMO_TYPES_BY_FTYPE[ftype]:[];
+    return <div className={`ov ${showSessionForm?"ov2":""}`} onClick={e=>{if(e.target===e.currentTarget){setShowAmmoForm(false);setEditItem(null);}}}>
       <div className="modal">
-        <div className="mt">Add Ammunition<button className="xb" onClick={()=>setShowAmmoForm(false)}>×</button></div>
+        <div className="mt">{editItem?"Edit Ammunition":"Add Ammunition"}<button className="xb" onClick={()=>{setShowAmmoForm(false);setEditItem(null);}}>×</button></div>
         <div className="fld"><div className="lbl">Calibre *</div>
-          <select className="inp" value={newAmmo.calibre} onChange={e=>setNewAmmo(a=>({...a,calibre:e.target.value}))}>
+          <select className="inp" value={newAmmo.calibre} onChange={e=>setNewAmmo(a=>({...a,calibre:e.target.value,type:""}))}>
             <option value="">Select</option>{CALIBRES.map(x=><option key={x}>{x}</option>)}
           </select>
         </div>
         <div className="row">
           <div className="fld"><div className="lbl">Brand</div><input className="inp" value={newAmmo.brand} onChange={e=>setNewAmmo(a=>({...a,brand:e.target.value}))} placeholder="e.g. Hornady"/></div>
-          <div className="fld"><div className="lbl">Type</div><input className="inp" value={newAmmo.type} onChange={e=>setNewAmmo(a=>({...a,type:e.target.value}))} placeholder="e.g. 55gr BTHP"/></div>
+          <div className="fld"><div className="lbl">Weight (gr)</div><input className="inp" type="number" value={newAmmo.weight} onChange={e=>setNewAmmo(a=>({...a,weight:e.target.value}))} placeholder="e.g. 55"/></div>
+        </div>
+        <div className="fld"><div className="lbl">Projectile / Type</div>
+          {ammoTypeOpts.length>0
+            ?<select className="inp" value={newAmmo.type} onChange={e=>setNewAmmo(a=>({...a,type:e.target.value}))}>
+              <option value="">Select</option>{ammoTypeOpts.map(x=><option key={x}>{x}</option>)}
+              <option value="Other">Other (type below)</option>
+            </select>
+            :<input className="inp" value={newAmmo.type} onChange={e=>setNewAmmo(a=>({...a,type:e.target.value}))} placeholder="e.g. BTHP"/>
+          }
         </div>
         <div className="row">
-          <div className="fld"><div className="lbl">Quantity</div><input className="inp" type="number" value={newAmmo.qty} onChange={e=>setNewAmmo(a=>({...a,qty:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Quantity (rounds)</div><input className="inp" type="number" value={newAmmo.qty} onChange={e=>setNewAmmo(a=>({...a,qty:e.target.value}))}/></div>
           <div className="fld"><div className="lbl">Purchased</div><input className="inp" type="date" value={newAmmo.purchased} onChange={e=>setNewAmmo(a=>({...a,purchased:e.target.value}))}/></div>
         </div>
+        <div className="fld"><div className="lbl">Lot / Batch No.</div><input className="inp" value={newAmmo.lot} onChange={e=>setNewAmmo(a=>({...a,lot:e.target.value}))} placeholder="Optional"/></div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newAmmo.notes} onChange={e=>setNewAmmo(a=>({...a,notes:e.target.value}))} placeholder="e.g. zeroed at 100m, MOA group"/></div>
         <div style={{display:"flex",gap:8,marginTop:14}}>
-          <button className="btn bsl" onClick={save}>Save</button>
-          <button className="btn" onClick={()=>setShowAmmoForm(false)}>Cancel</button>
+          <button className="btn bsl" onClick={save}>{editItem?"Update":"Save"}</button>
+          <button className="btn" onClick={()=>{setShowAmmoForm(false);setEditItem(null);}}>Cancel</button>
         </div>
       </div>
     </div>;
@@ -1001,7 +1066,7 @@ function App() {
       else setLand(l=>[...l,{...newLand,id:gid()}]);
       setShowLandForm(false); setEditItem(null); setNewLand(blankLand);
     };
-    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowLandForm(false);}}>
+    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget)setShowLandForm(false);}}>
       <div className="modal">
         <div className="mt">{editItem?"Edit Land":"Add Land"}<button className="xb" onClick={()=>setShowLandForm(false)}>×</button></div>
         <div className="fld"><div className="lbl">Name *</div><input className="inp" value={newLand.name} onChange={e=>setNewLand(l=>({...l,name:e.target.value}))} placeholder="e.g. Greenacres Farm"/></div>
@@ -1039,7 +1104,7 @@ function App() {
       setMaintenance(m=>[...m,{...newMaint,id:gid()}]);
       setShowMaintForm(false); setNewMaint(blankMaint);
     };
-    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowMaintForm(false);}}>
+    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget)setShowMaintForm(false);}}>
       <div className="modal">
         <div className="mt">Log Maintenance<button className="xb" onClick={()=>setShowMaintForm(false)}>×</button></div>
         <div className="fld"><div className="lbl">Firearm *</div>
