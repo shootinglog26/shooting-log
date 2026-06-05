@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>UK Shooting Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+<style>* { box-sizing: border-box; margin: 0; padding: 0; } body { overscroll-behavior: none; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const UK_QUARRY = [
+  "Rabbit","Brown Hare","Grey Squirrel","Woodpigeon","Collared Dove","Stock Dove",
+  "Jackdaw","Carrion Crow","Rook","Magpie","Jay","Feral Pigeon","Canada Goose",
+  "Greylag Goose","Pheasant","Red-legged Partridge","Grey Partridge","Mallard",
+  "Teal","Wigeon","Gadwall","Shoveler","Pintail","Goldeneye","Common Pochard",
+  "Tufted Duck","Red Grouse","Black Grouse","Ptarmigan","Woodcock","Common Snipe",
+  "Golden Plover","Roe Deer","Fallow Deer","Red Deer","Sika Deer","Chinese Water Deer",
+  "Muntjac","Red Fox","Mink","Brown Rat","Stoat","Weasel"
+];
+const WEATHER_CONDITIONS = ["Clear","Overcast","Light Rain","Heavy Rain","Snow","Fog","Windy","Sunny","Partly Cloudy","Frost"];
+const WIND_DIRECTIONS = ["N","NE","E","SE","S","SW","W","NW","Calm"];
+const LOCATION_TYPES = ["Farm","Clay Ground","Target Range","Woodland","Moorland","Marsh","Private Land","Shooting Club"];
+const CALIBRES = [
+  ".17 HMR",".17 Hornet",".22 LR",".22 WMR",".222 Rem",".223 Rem",".243 Win",
+  ".25-06",".270 Win",".308 Win",".30-06",".300 Win Mag",".303 British",".338 Lapua",
+  "6.5 Creedmoor","7mm Rem Mag",".357 Mag",".44 Mag",".45 ACP","9mm",
+  "12 Bore","20 Bore","28 Bore",".410","Other"
+];
+const FIREARM_TYPES = ["Rifle","Shotgun","Pistol","Air Rifle","Rimfire","Centerfire"];
+const ACTION_TYPES = ["Bolt Action","Semi-Auto","Lever Action","Pump Action","Break Action","Over & Under","Side by Side","Single Shot","Straight Pull","Pre-charged Pneumatic"];
+
+const save = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} };
+const load = (key, def) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; } };
+
+const ICONS = {
+  gun: "M2 12h2l1-3h14l1 3h2v2h-1l-1 2H5l-1-2H3v-2zm3.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm11 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z",
+  target: "M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2a8 8 0 110 16A8 8 0 0112 4zm0 3a5 5 0 100 10A5 5 0 0012 7zm0 2a3 3 0 110 6 3 3 0 010-6zm0 1.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z",
+  map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6zm6-1v13m6-10v13",
+  ammo: "M9 2h6v4l2 2v12H7V8l2-2V2zm3 12a2 2 0 100-4 2 2 0 000 4z",
+  paw: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7",
+  chart: "M3 3v18h18M7 16l4-4 4 4 4-8",
+  wrench: "M14.7 6.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-1-1a1 1 0 010-1.4l8-8a1 1 0 011.4 0l1 1zm-9 9L4 19l3.7-1.7L14 11l-2-2-6.3 6.3z",
+  doc: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5M8 13h8M8 17h5",
+  settings: "M12 15a3 3 0 100-6 3 3 0 000 6zm7.07-4.27l1.42-1.1a1 1 0 00.22-1.27l-1.5-2.6a1 1 0 00-1.22-.44l-1.67.67a6.6 6.6 0 00-1.54-.9l-.25-1.78A1 1 0 0013.35 3h-3a1 1 0 00-.99.86l-.25 1.78a6.6 6.6 0 00-1.54.9L5.9 5.87a1 1 0 00-1.22.44l-1.5 2.6a1 1 0 00.22 1.27l1.42 1.1a6.9 6.9 0 000 1.44l-1.42 1.1a1 1 0 00-.22 1.27l1.5 2.6a1 1 0 001.22.44l1.67-.67c.48.34 1 .62 1.54.9l.25 1.78A1 1 0 0010.35 21h3a1 1 0 00.99-.86l.25-1.78a6.6 6.6 0 001.54-.9l1.67.67a1 1 0 001.22-.44l1.5-2.6a1 1 0 00-.22-1.27l-1.42-1.1c.04-.48.04-.96 0-1.44z",
+  land: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z",
+  plus: "M12 5v14M5 12h14",
+  camera: "M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11zm-11-3a4 4 0 100-8 4 4 0 000 8z",
+  trash: "M3 6h18M8 6V4h8v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z",
+  sun: "M12 17a5 5 0 100-10 5 5 0 000 10zm0-14v2m0 14v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M2 12h2m16 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42",
+  moon: "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z",
+  eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zm11 3a3 3 0 100-6 3 3 0 000 6z",
+  pdf: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zm-1 1v5h5M9 13h6M9 17h4",
+  cloud: "M18 10a6 6 0 00-11.94-1A5 5 0 004 19h14a4 4 0 000-8z",
+  alert: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4m0 4h.01",
+};
+
+function Icon({ name, size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+      <path d={ICONS[name] || ICONS.target} />
+    </svg>
+  );
+}
+
+const getTheme = (mode) => {
+  if (mode === "night") return {
+    bg:"#0a0a14",card:"#0f0f1e",border:"#1a2a1a",text:"#00ff41",textMuted:"#008020",
+    accent:"#00ff41",accentBg:"#001a00",input:"#0a0f0a",nav:"#060610",
+    shadow:"0 0 20px rgba(0,255,65,0.15)",badge:"#001a00",badgeText:"#00ff41",
+    danger:"#ff0040",success:"#00ff41",headerBg:"linear-gradient(135deg,#060610,#0a0f0a)",mono:true
+  };
+  if (mode === "light") return {
+    bg:"#f5f0e8",card:"#fffdf8",border:"#d4c9b0",text:"#2a1f0e",textMuted:"#7a6a52",
+    accent:"#8B4513",accentBg:"#f0e8d8",input:"#fffdf8",nav:"#2a1f0e",
+    shadow:"0 4px 20px rgba(42,31,14,0.12)",badge:"#e8d8c0",badgeText:"#5a3a1a",
+    danger:"#cc2200",success:"#2d6a2d",headerBg:"linear-gradient(135deg,#2a1f0e,#5a3a1a)",mono:false
+  };
+  return {
+    bg:"#0d1117",card:"#161b22",border:"#30363d",text:"#e6edf3",textMuted:"#8b949e",
+    accent:"#d4a843",accentBg:"#1c1810",input:"#0d1117",nav:"#010409",
+    shadow:"0 4px 20px rgba(0,0,0,0.4)",badge:"#1c1810",badgeText:"#d4a843",
+    danger:"#f85149",success:"#3fb950",headerBg:"linear-gradient(135deg,#010409,#161b22)",mono:false
+  };
+};
+
+function App() {
+  const [theme, setTheme] = useState(() => load("sl_theme","dark"));
+  const [page, setPage] = useState("dashboard");
+  const [firearms, setFirearms] = useState(() => load("sl_firearms",[]));
+  const [locations, setLocations] = useState(() => load("sl_locations",[]));
+  const [sessions, setSessions] = useState(() => load("sl_sessions",[]));
+  const [ammoStock, setAmmoStock] = useState(() => load("sl_ammo",[]));
+  const [land, setLand] = useState(() => load("sl_land",[]));
+  const [maintenance, setMaintenance] = useState(() => load("sl_maintenance",[]));
+  const [feo, setFeo] = useState(() => load("sl_feo",{fac:"",facExpiry:"",sgc:"",sgcExpiry:"",name:"",address:"",feoName:"",feoContact:""}));
+  const [alerts, setAlerts] = useState([]);
+  const [editItem, setEditItem] = useState(null);
+  const [showFirearmForm, setShowFirearmForm] = useState(false);
+  const [showLocationForm, setShowLocationForm] = useState(false);
+  const [showSessionForm, setShowSessionForm] = useState(false);
+  const [showAmmoForm, setShowAmmoForm] = useState(false);
+  const [showLandForm, setShowLandForm] = useState(false);
+  const [showMaintForm, setShowMaintForm] = useState(false);
+
+  const blankFirearm = {name:"",type:"",action:"",calibre:"",serial:"",manufacturer:"",notes:"",photo:null};
+  const blankSession = {date:td(),locationId:"",firearmId:"",ammoId:"",rounds:0,weather:"",wind:"",windSpeed:"",temp:"",quarryBag:{},notes:"",targetPhotos:[],distance:"",purpose:"target"};
+  const blankAmmo = {calibre:"",qty:0,brand:"",type:"",purchased:td()};
+  const blankLand = {name:"",acres:"",county:"",owner:"",contact:"",permission:td(),notes:"",species:[]};
+  const blankMaint = {firearmId:"",date:td(),type:"",parts:"",notes:"",nextDue:""};
+
+  const [newFirearm, setNewFirearm] = useState(blankFirearm);
+  const [newLocation, setNewLocation] = useState({name:"",type:"",county:"",notes:""});
+  const [newSession, setNewSession] = useState(blankSession);
+  const [newAmmo, setNewAmmo] = useState(blankAmmo);
+  const [newLand, setNewLand] = useState(blankLand);
+  const [newMaint, setNewMaint] = useState(blankMaint);
+
+  const t = getTheme(theme);
+  const ff = t.mono ? "'Courier New',monospace" : "'Cinzel','Georgia',serif";
+  const bf = t.mono ? "'Courier New',monospace" : "'Palatino Linotype',Georgia,serif";
+
+  useEffect(()=>{save("sl_theme",theme);},[theme]);
+  useEffect(()=>{save("sl_firearms",firearms);},[firearms]);
+  useEffect(()=>{save("sl_locations",locations);},[locations]);
+  useEffect(()=>{save("sl_sessions",sessions);},[sessions]);
+  useEffect(()=>{save("sl_ammo",ammoStock);},[ammoStock]);
+  useEffect(()=>{save("sl_land",land);},[land]);
+  useEffect(()=>{save("sl_maintenance",maintenance);},[maintenance]);
+  useEffect(()=>{save("sl_feo",feo);},[feo]);
+
+  useEffect(()=>{
+    const n=[];
+    const chk=(lbl,ds)=>{if(!ds)return;const d=Math.floor((new Date(ds)-new Date())/86400000);if(d<=180)n.push({lbl,d,ds});};
+    chk("FAC",feo.facExpiry); chk("SGC",feo.sgcExpiry);
+    setAlerts(n);
+  },[feo]);
+
+  function td(){return new Date().toISOString().split("T")[0];}
+  function gid(){return Math.random().toString(36).substr(2,9);}
+  function fmt(d){return d?new Date(d).toLocaleDateString("en-GB"):"—";}
+  function daysUntil(d){return d?Math.floor((new Date(d)-new Date())/86400000):null;}
+
+  function readImg(file,cb){
+    if(!file||!file.type.startsWith("image/"))return;
+    const r=new FileReader();
+    r.onload=e=>cb(e.target.result);
+    r.readAsDataURL(file);
+  }
+
+  // totals
+  const totalRounds = sessions.reduce((a,s)=>a+(parseInt(s.rounds)||0),0);
+  const totalSessions = sessions.length;
+  const totalQuarry = sessions.reduce((a,s)=>a+Object.values(s.quarryBag||{}).reduce((b,v)=>b+(parseInt(v)||0),0),0);
+  const quarryBreakdown = sessions.reduce((a,s)=>{Object.entries(s.quarryBag||{}).forEach(([k,v])=>{a[k]=(a[k]||0)+(parseInt(v)||0);});return a;},{});
+
+  // --- CSS ---
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:${t.bg};color:${t.text};font-family:${bf};-webkit-text-size-adjust:100%;}
+    .app{min-height:100vh;background:${t.bg};padding-bottom:20px;}
+    .nav{background:${t.nav};border-bottom:1px solid ${t.border};position:sticky;top:0;z-index:100;}
+    .nav-inner{display:flex;align-items:center;gap:2px;padding:6px 8px;overflow-x:auto;scrollbar-width:none;}
+    .nav-inner::-webkit-scrollbar{display:none;}
+    .nb{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 9px;border-radius:8px;border:none;background:transparent;color:${t.textMuted};cursor:pointer;font-size:10px;font-family:${bf};white-space:nowrap;transition:all .2s;min-width:50px;}
+    .nb:hover,.nb.active{background:${t.accentBg};color:${t.accent};}
+    .hdr{background:${t.headerBg};padding:18px 16px 14px;border-bottom:2px solid ${t.accent};}
+    .hdr h1{font-family:${ff};font-size:20px;color:${t.accent};letter-spacing:2px;text-transform:uppercase;}
+    .hdr p{color:${t.textMuted};font-size:12px;margin-top:2px;font-style:italic;}
+    .main{padding:14px;max-width:800px;margin:0 auto;}
+    .card{background:${t.card};border:1px solid ${t.border};border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:${t.shadow};}
+    .ct{font-family:${ff};font-size:13px;color:${t.accent};text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+    .btn{padding:7px 14px;border-radius:8px;border:1px solid ${t.accent};background:${t.accentBg};color:${t.accent};cursor:pointer;font-family:${bf};font-size:13px;transition:all .2s;display:inline-flex;align-items:center;gap:6px;}
+    .btn:hover,.btn:active{background:${t.accent};color:${t.nav};}
+    .bsm{padding:5px 10px;font-size:12px;}
+    .bdg{border-color:${t.danger};color:${t.danger};background:transparent;}
+    .bdg:hover{background:${t.danger};color:white;}
+    .bsl{background:${t.accent};color:${t.nav};}
+    .inp{width:100%;padding:9px 12px;border:1px solid ${t.border};border-radius:8px;background:${t.input};color:${t.text};font-family:${bf};font-size:13px;outline:none;transition:border .2s;}
+    .inp:focus{border-color:${t.accent};}
+    .lbl{font-size:11px;color:${t.textMuted};margin-bottom:4px;font-family:${ff};letter-spacing:.5px;text-transform:uppercase;}
+    .fld{margin-bottom:11px;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;}
+    .row .fld{flex:1;min-width:120px;}
+    .badge{display:inline-flex;align-items:center;gap:4px;background:${t.badge};color:${t.badgeText};padding:3px 8px;border-radius:20px;font-size:11px;border:1px solid ${t.accent}44;}
+    .li{border:1px solid ${t.border};border-radius:10px;padding:11px;margin-bottom:9px;background:${t.input};display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+    .li:hover{border-color:${t.accent}66;}
+    .li h3{font-size:14px;color:${t.text};font-family:${ff};}
+    .li p{font-size:12px;color:${t.textMuted};margin-top:2px;}
+    .dvd{border:none;border-top:1px solid ${t.border};margin:12px 0;}
+    .sg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+    .sb{background:${t.input};border:1px solid ${t.border};border-radius:10px;padding:13px;text-align:center;}
+    .sb .val{font-family:${ff};font-size:24px;color:${t.accent};}
+    .sb .sl{font-size:11px;color:${t.textMuted};margin-top:4px;}
+    .ab{background:${t.danger}22;border:1px solid ${t.danger};border-radius:10px;padding:11px;display:flex;align-items:center;gap:10px;color:${t.danger};font-size:12px;margin-bottom:12px;}
+    .pu{border:2px dashed ${t.border};border-radius:10px;padding:16px;text-align:center;color:${t.textMuted};font-size:13px;}
+    .pp{width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px;}
+    .tbar{display:flex;gap:8px;flex-wrap:wrap;}
+    .tbtn{padding:6px 12px;border-radius:20px;border:1px solid ${t.border};background:transparent;color:${t.textMuted};cursor:pointer;font-size:12px;transition:all .2s;display:flex;align-items:center;gap:5px;font-family:${bf};}
+    .tbtn.active{border-color:${t.accent};background:${t.accentBg};color:${t.accent};}
+    .nvscan{pointer-events:none;position:fixed;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg,rgba(0,255,65,.03) 0,rgba(0,255,65,.03) 1px,transparent 1px,transparent 2px);z-index:9999;}
+    select.inp option{background:${t.card};color:${t.text};}
+    textarea.inp{resize:vertical;min-height:70px;}
+    .qg{display:flex;flex-wrap:wrap;gap:5px;}
+    .qi{padding:5px 9px;border-radius:20px;border:1px solid ${t.border};background:transparent;color:${t.textMuted};cursor:pointer;font-size:12px;transition:all .2s;font-family:${bf};}
+    .qi.sel{border-color:${t.accent};background:${t.accentBg};color:${t.accent};}
+    .pbg{background:${t.border};border-radius:4px;height:7px;overflow:hidden;margin-top:4px;}
+    .pb{height:100%;border-radius:4px;background:${t.accent};transition:width .3s;}
+    .ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+    .modal{background:${t.card};border:1px solid ${t.border};border-radius:16px 16px 0 0;padding:18px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
+    .mt{font-family:${ff};font-size:15px;color:${t.accent};margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
+    .xb{background:none;border:none;color:${t.textMuted};cursor:pointer;font-size:22px;line-height:1;}
+    .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    .es{text-align:center;padding:36px 20px;color:${t.textMuted};font-style:italic;}
+    .ft{width:100%;border-collapse:collapse;font-size:12px;}
+    .ft th{text-align:left;padding:7px;border-bottom:1px solid ${t.border};color:${t.accent};font-family:${ff};font-size:10px;text-transform:uppercase;letter-spacing:.5px;}
+    .ft td{padding:7px;border-bottom:1px solid ${t.border}22;color:${t.text};vertical-align:top;}
+    .ft tr:last-child td{border-bottom:none;}
+    .ci{display:flex;align-items:center;gap:8px;}
+    .cbtn{width:32px;height:32px;border-radius:50%;border:1px solid ${t.accent};background:${t.accentBg};color:${t.accent};cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+    .cv{font-family:${ff};font-size:18px;color:${t.text};min-width:40px;text-align:center;}
+    .file-inp{display:block;width:100%;padding:10px 12px;border:1px dashed ${t.accent};border-radius:8px;background:${t.accentBg};color:${t.text};font-size:14px;cursor:pointer;}
+  `;
+
+  // FEO export
+  function generateFEO() {
+    const rows = sessions.map(s => {
+      const loc = locations.find(l=>l.id===s.locationId);
+      const gun = firearms.find(f=>f.id===s.firearmId);
+      const q = Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}: ${v}`).join(", ");
+      return `<tr><td>${fmt(s.date)}</td><td>${loc?.name||"—"}</td><td>${gun?.name||"—"}</td><td>${gun?.calibre||"—"}</td><td>${s.rounds}</td><td>${q||"—"}</td><td>${s.notes||"—"}</td></tr>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Shooting Record</title>
+    <style>body{font-family:Georgia,serif;margin:40px;color:#1a1a1a}h1{color:#5a3a1a;border-bottom:2px solid #8B4513;padding-bottom:10px}
+    .hi{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0;font-size:13px}.hi p{margin:3px 0}.lb{color:#666;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+    table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px}th{background:#5a3a1a;color:white;padding:8px;text-align:left;font-size:11px;text-transform:uppercase}
+    td{padding:7px 8px;border-bottom:1px solid #ddd}tr:nth-child(even){background:#f9f5f0}
+    .ft{margin-top:30px;font-size:11px;color:#888;border-top:1px solid #ccc;padding-top:10px}</style></head><body>
+    <h1>SHOOTING RECORD — FAC/SGC COMPLIANCE LOG</h1>
+    <div class="hi">
+      <div><p class="lb">Name</p><p>${feo.name||"—"}</p></div>
+      <div><p class="lb">Address</p><p>${feo.address||"—"}</p></div>
+      <div><p class="lb">FAC Number</p><p>${feo.fac||"—"}</p></div><div><p class="lb">FAC Expiry</p><p>${fmt(feo.facExpiry)}</p></div>
+      <div><p class="lb">SGC Number</p><p>${feo.sgc||"—"}</p></div><div><p class="lb">SGC Expiry</p><p>${fmt(feo.sgcExpiry)}</p></div>
+      <div><p class="lb">FEO Name</p><p>${feo.feoName||"—"}</p></div><div><p class="lb">FEO Contact</p><p>${feo.feoContact||"—"}</p></div>
+    </div>
+    <table><thead><tr><th>Date</th><th>Location</th><th>Firearm</th><th>Calibre</th><th>Rounds</th><th>Quarry</th><th>Notes</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="ft">Generated ${new Date().toLocaleDateString("en-GB")} — Sessions: ${sessions.length} — Total rounds: ${totalRounds}</div>
+    </body></html>`;
+    const b=new Blob([html],{type:"text/html"});
+    const u=URL.createObjectURL(b);
+    const a=document.createElement("a");a.href=u;a.download="shooting_record.html";a.click();
+    URL.revokeObjectURL(u);
+  }
+
+  // ---- NAV ----
+  const NAV = [
+    {id:"dashboard",icon:"target",label:"Log"},
+    {id:"firearms",icon:"gun",label:"Firearms"},
+    {id:"ammo",icon:"ammo",label:"Ammo"},
+    {id:"locations",icon:"map",label:"Locations"},
+    {id:"sessions",icon:"paw",label:"Sessions"},
+    {id:"land",icon:"land",label:"Land"},
+    {id:"maintenance",icon:"wrench",label:"Maint."},
+    {id:"stats",icon:"chart",label:"Stats"},
+    {id:"feo",icon:"doc",label:"FEO"},
+    {id:"settings",icon:"settings",label:"Settings"},
+  ];
+
+  function Alerts() {
+    if(!alerts.length) return null;
+    return <div>{alerts.map((a,i)=>(
+      <div key={i} className="ab">
+        <Icon name="alert" size={16}/>
+        <span><strong>{a.lbl} expires {fmt(a.ds)}</strong> — {a.d>0?`${a.d} days remaining`:"EXPIRED"} — Renew now!</span>
+      </div>
+    ))}</div>;
+  }
+
+  // ---- PAGES ----
+  function Dashboard() {
+    return <div>
+      <div className="hdr"><h1>Shooting Log</h1><p>United Kingdom · Licensed Field Sports Record</p></div>
+      <div className="main">
+        <Alerts/>
+        <div className="sg" style={{marginBottom:12}}>
+          <div className="sb"><div className="val">{totalSessions}</div><div className="sl">Sessions</div></div>
+          <div className="sb"><div className="val">{totalRounds.toLocaleString()}</div><div className="sl">Rounds Fired</div></div>
+          <div className="sb"><div className="val">{totalQuarry}</div><div className="sl">Quarry Taken</div></div>
+          <div className="sb"><div className="val">{firearms.length}</div><div className="sl">Firearms</div></div>
+        </div>
+        <div className="card">
+          <div className="sh">
+            <div className="ct"><Icon name="target" size={15}/>Recent Sessions</div>
+            <button className="btn bsm" onClick={()=>setShowSessionForm(true)}><Icon name="plus" size={13}/>New Session</button>
+          </div>
+          {sessions.length===0?<div className="es">No sessions logged yet</div>:sessions.slice(-5).reverse().map(s=>{
+            const loc=locations.find(l=>l.id===s.locationId);
+            const gun=firearms.find(f=>f.id===s.firearmId);
+            const qT=Object.values(s.quarryBag||{}).reduce((a,v)=>a+(parseInt(v)||0),0);
+            return <div key={s.id} className="li">
+              <div>
+                <h3>{fmt(s.date)}</h3>
+                <p>{loc?.name||"Unknown"} · {gun?.name||"—"} · {s.rounds} rds</p>
+                {qT>0&&<p style={{marginTop:4}}><span className="badge">🎯 {qT} quarry</span></p>}
+                {s.weather&&<p style={{marginTop:3,fontSize:11}}>☁ {s.weather}{s.wind?` · ${s.wind}`:""}{s.temp?` · ${s.temp}°C`:""}</p>}
+              </div>
+              {s.targetPhotos?.length>0&&<img src={s.targetPhotos[0]} alt="" style={{width:56,height:56,objectFit:"cover",borderRadius:8,flexShrink:0}}/>}
+            </div>;
+          })}
+        </div>
+        <div className="card">
+          <div className="ct"><Icon name="ammo" size={15}/>Ammo Overview</div>
+          {ammoStock.length===0?<div className="es">No ammo tracked</div>:ammoStock.map(a=>(
+            <div key={a.id} style={{marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+                <span>{a.calibre}{a.brand?` · ${a.brand}`:""}</span>
+                <span style={{color:a.qty<50?t.danger:t.accent,fontFamily:ff}}>{a.qty} rds</span>
+              </div>
+              <div className="pbg"><div className="pb" style={{width:`${Math.min(100,(a.qty/500)*100)}%`,background:a.qty<50?t.danger:t.accent}}/></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>;
+  }
+
+  function Firearms() {
+    return <div>
+      <div className="hdr"><h1>Firearms</h1><p>Licensed Firearms Register</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="gun" size={15}/>My Firearms</div>
+          <button className="btn" onClick={()=>{setEditItem(null);setNewFirearm(blankFirearm);setShowFirearmForm(true);}}><Icon name="plus" size={13}/>Add Firearm</button>
+        </div>
+        {firearms.length===0?<div className="card"><div className="es">No firearms registered yet</div></div>:firearms.map(f=>(
+          <div key={f.id} className="card" style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+            {f.photo?<img src={f.photo} alt={f.name} style={{width:76,height:76,objectFit:"cover",borderRadius:8,border:`1px solid ${t.border}`,flexShrink:0}}/>
+              :<div style={{width:76,height:76,background:t.accentBg,borderRadius:8,border:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"center",color:t.textMuted,flexShrink:0}}><Icon name="camera" size={22}/></div>}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:6}}>
+                <h3 style={{fontFamily:ff,color:t.text,fontSize:14}}>{f.name}</h3>
+                <div style={{display:"flex",gap:5,flexShrink:0}}>
+                  <button className="btn bsm" onClick={()=>{setEditItem({...f,_type:"firearm"});setNewFirearm(f);setShowFirearmForm(true);}}>Edit</button>
+                  <button className="btn bsm bdg" onClick={()=>setFirearms(fl=>fl.filter(x=>x.id!==f.id))}><Icon name="trash" size={12}/></button>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:5}}>
+                {f.type&&<span className="badge">{f.type}</span>}
+                {f.action&&<span className="badge" style={{borderColor:t.accent,color:t.accent,fontWeight:600}}>{f.action}</span>}
+                {f.calibre&&<span className="badge">{f.calibre}</span>}
+                {f.manufacturer&&<span className="badge">{f.manufacturer}</span>}
+              </div>
+              {f.serial&&<p style={{fontSize:11,color:t.textMuted,marginTop:3}}>S/N: {f.serial}</p>}
+              {f.notes&&<p style={{fontSize:12,color:t.textMuted,marginTop:3}}>{f.notes}</p>}
+              <p style={{fontSize:11,color:t.textMuted,marginTop:5}}>
+                Sessions: {sessions.filter(s=>s.firearmId===f.id).length} · Rounds: {sessions.filter(s=>s.firearmId===f.id).reduce((a,s)=>a+(parseInt(s.rounds)||0),0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>;
+  }
+
+  function Ammo() {
+    return <div>
+      <div className="hdr"><h1>Ammunition</h1><p>Stock Management</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="ammo" size={15}/>Ammo Stock</div>
+          <button className="btn" onClick={()=>{setNewAmmo(blankAmmo);setShowAmmoForm(true);}}><Icon name="plus" size={13}/>Add Stock</button>
+        </div>
+        {ammoStock.length===0?<div className="card"><div className="es">No ammunition tracked</div></div>:ammoStock.map(a=>{
+          const used=sessions.reduce((acc,s)=>{const g=firearms.find(f=>f.id===s.firearmId);return g?.calibre===a.calibre?acc+(parseInt(s.rounds)||0):acc;},0);
+          return <div key={a.id} className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <h3 style={{fontFamily:ff,fontSize:14}}>{a.calibre}</h3>
+                {a.brand&&<p style={{fontSize:12,color:t.textMuted}}>{a.brand}{a.type?` · ${a.type}`:""}</p>}
+                <p style={{fontSize:11,color:t.textMuted,marginTop:2}}>Purchased: {fmt(a.purchased)} · Used: {used}</p>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontFamily:ff,fontSize:22,color:a.qty<50?t.danger:t.accent}}>{a.qty}</div>
+                <div style={{fontSize:11,color:t.textMuted}}>rounds</div>
+              </div>
+            </div>
+            <div className="pbg" style={{marginTop:9}}><div className="pb" style={{width:`${Math.min(100,(a.qty/(a.qty+used||1))*100)}%`,background:a.qty<50?t.danger:t.accent}}/></div>
+            {a.qty<50&&<p style={{fontSize:11,color:t.danger,marginTop:5}}>⚠ Low stock</p>}
+            <div style={{marginTop:8,display:"flex",gap:7}}>
+              <button className="btn bsm" onClick={()=>{const n=parseInt(prompt("Add rounds:")||0);if(n>0)setAmmoStock(s=>s.map(x=>x.id===a.id?{...x,qty:x.qty+n}:x));}}>+ Add Rounds</button>
+              <button className="btn bsm bdg" onClick={()=>setAmmoStock(s=>s.filter(x=>x.id!==a.id))}><Icon name="trash" size={12}/></button>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>;
+  }
+
+  function Locations() {
+    return <div>
+      <div className="hdr"><h1>Locations</h1><p>Farms, Ranges &amp; Grounds</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="map" size={15}/>My Locations</div>
+          <button className="btn" onClick={()=>{setEditItem(null);setNewLocation({name:"",type:"",county:"",notes:""});setShowLocationForm(true);}}><Icon name="plus" size={13}/>Add</button>
+        </div>
+        {locations.length===0?<div className="card"><div className="es">No locations added yet</div></div>:locations.map(l=>(
+          <div key={l.id} className="li">
+            <div style={{flex:1}}>
+              <h3>{l.name}</h3>
+              <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
+                {l.type&&<span className="badge">{l.type}</span>}
+                {l.county&&<span className="badge">{l.county}</span>}
+              </div>
+              {l.notes&&<p style={{marginTop:4}}>{l.notes}</p>}
+              <p style={{fontSize:11,marginTop:4}}>Sessions: {sessions.filter(s=>s.locationId===l.id).length}</p>
+            </div>
+            <div style={{display:"flex",gap:5,flexShrink:0}}>
+              <button className="btn bsm" onClick={()=>{setEditItem({...l,_type:"location"});setNewLocation(l);setShowLocationForm(true);}}>Edit</button>
+              <button className="btn bsm bdg" onClick={()=>setLocations(ll=>ll.filter(x=>x.id!==l.id))}><Icon name="trash" size={12}/></button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>;
+  }
+
+  function Sessions() {
+    return <div>
+      <div className="hdr"><h1>Sessions</h1><p>Shooting Records &amp; Quarry Bags</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="paw" size={15}/>All Sessions</div>
+          <button className="btn" onClick={()=>{setNewSession(blankSession);setShowSessionForm(true);}}><Icon name="plus" size={13}/>New Session</button>
+        </div>
+        {sessions.length===0?<div className="card"><div className="es">No sessions recorded yet</div></div>:[...sessions].reverse().map(s=>{
+          const loc=locations.find(l=>l.id===s.locationId);
+          const gun=firearms.find(f=>f.id===s.firearmId);
+          const qe=Object.entries(s.quarryBag||{}).filter(([,v])=>parseInt(v)>0);
+          const ammoBatch=ammoStock.find(a=>a.id===s.ammoId);
+          return <div key={s.id} className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <div>
+                <h3 style={{fontFamily:ff,fontSize:14}}>{fmt(s.date)}</h3>
+                <p style={{fontSize:13,color:t.textMuted,marginTop:2}}>{loc?.name||"—"} · {gun?.name||"—"} ({gun?.calibre||"—"})</p>
+                {ammoBatch&&<p style={{fontSize:11,color:t.textMuted,marginTop:2}}>Ammo: {ammoBatch.brand||"Unbranded"}{ammoBatch.type?` ${ammoBatch.type}`:""}</p>}
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontFamily:ff,color:t.accent}}>{s.rounds} rds</div>
+                {s.distance&&<div style={{fontSize:11,color:t.textMuted}}>{s.distance}m</div>}
+              </div>
+            </div>
+            {(s.weather||s.wind||s.temp)&&<div style={{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}>
+              {s.weather&&<span className="badge">☁ {s.weather}</span>}
+              {s.wind&&<span className="badge">{s.wind}{s.windSpeed?` ${s.windSpeed}mph`:""}</span>}
+              {s.temp&&<span className="badge">{s.temp}°C</span>}
+            </div>}
+            {qe.length>0&&<div style={{marginTop:9}}>
+              <p style={{fontSize:10,color:t.textMuted,marginBottom:5,fontFamily:ff,textTransform:"uppercase",letterSpacing:.5}}>Quarry Bag</p>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{qe.map(([k,v])=><span key={k} className="badge">{k}: {v}</span>)}</div>
+            </div>}
+            {s.notes&&<p style={{fontSize:12,color:t.textMuted,marginTop:7,fontStyle:"italic"}}>{s.notes}</p>}
+            {s.targetPhotos?.length>0&&<div style={{display:"flex",gap:5,marginTop:9,overflowX:"auto"}}>
+              {s.targetPhotos.map((p,i)=><img key={i} src={p} alt="" style={{height:76,width:76,objectFit:"cover",borderRadius:8,border:`1px solid ${t.border}`,flexShrink:0}}/>)}
+            </div>}
+            <div style={{marginTop:8}}>
+              <button className="btn bsm bdg" onClick={()=>setSessions(ss=>ss.filter(x=>x.id!==s.id))}><Icon name="trash" size={12}/> Delete</button>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>;
+  }
+
+  function Land() {
+    return <div>
+      <div className="hdr"><h1>Permission Land</h1><p>Land Access Register</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="land" size={15}/>My Land</div>
+          <button className="btn" onClick={()=>{setEditItem(null);setNewLand(blankLand);setShowLandForm(true);}}><Icon name="plus" size={13}/>Add Land</button>
+        </div>
+        {land.length===0?<div className="card"><div className="es">No land permissions added</div></div>:land.map(l=>(
+          <div key={l.id} className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+              <h3 style={{fontFamily:ff}}>{l.name}</h3>
+              <div style={{display:"flex",gap:5,flexShrink:0}}>
+                <button className="btn bsm" onClick={()=>{setEditItem({...l,_type:"land"});setNewLand(l);setShowLandForm(true);}}>Edit</button>
+                <button className="btn bsm bdg" onClick={()=>setLand(ll=>ll.filter(x=>x.id!==l.id))}><Icon name="trash" size={12}/></button>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:7}}>
+              {l.county&&<span className="badge">{l.county}</span>}
+              {l.acres&&<span className="badge">{l.acres} acres</span>}
+            </div>
+            {l.owner&&<p style={{fontSize:12,color:t.textMuted,marginTop:5}}>Owner: {l.owner}</p>}
+            {l.contact&&<p style={{fontSize:12,color:t.textMuted}}>Contact: {l.contact}</p>}
+            <p style={{fontSize:12,color:t.textMuted}}>Permission: {fmt(l.permission)}</p>
+            {l.species?.length>0&&<div style={{marginTop:7}}>
+              <p style={{fontSize:11,color:t.textMuted,marginBottom:4}}>Species present:</p>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{l.species.map(s=><span key={s} className="badge">{s}</span>)}</div>
+            </div>}
+            {l.notes&&<p style={{fontSize:12,color:t.textMuted,marginTop:5,fontStyle:"italic"}}>{l.notes}</p>}
+          </div>
+        ))}
+      </div>
+    </div>;
+  }
+
+  function Maintenance() {
+    return <div>
+      <div className="hdr"><h1>Maintenance Log</h1><p>Firearm Service Records</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="wrench" size={15}/>Service Records</div>
+          <button className="btn" onClick={()=>{setNewMaint(blankMaint);setShowMaintForm(true);}}><Icon name="plus" size={13}/>Log Service</button>
+        </div>
+        {maintenance.length===0?<div className="card"><div className="es">No maintenance logged yet</div></div>:[...maintenance].reverse().map(m=>{
+          const gun=firearms.find(f=>f.id===m.firearmId);
+          return <div key={m.id} className="li">
+            <div style={{flex:1}}>
+              <h3>{gun?.name||"Unknown firearm"}</h3>
+              <div style={{display:"flex",gap:5,marginTop:4,flexWrap:"wrap"}}>
+                <span className="badge">{fmt(m.date)}</span>
+                {m.type&&<span className="badge">{m.type}</span>}
+              </div>
+              {m.parts&&<p style={{marginTop:4}}>Parts: {m.parts}</p>}
+              {m.notes&&<p style={{marginTop:2}}>{m.notes}</p>}
+              {m.nextDue&&<p style={{marginTop:4,color:daysUntil(m.nextDue)<30?t.danger:t.success,fontSize:11}}>Next service: {fmt(m.nextDue)}</p>}
+            </div>
+            <button className="btn bsm bdg" onClick={()=>setMaintenance(mm=>mm.filter(x=>x.id!==m.id))}><Icon name="trash" size={12}/></button>
+          </div>;
+        })}
+      </div>
+    </div>;
+  }
+
+  function Stats() {
+    const byMonth=sessions.reduce((a,s)=>{const m=s.date?.substr(0,7);if(!m)return a;a[m]=(a[m]||0)+(parseInt(s.rounds)||0);return a;},{});
+    const top=Object.entries(quarryBreakdown).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const byLoc=locations.map(l=>({name:l.name,n:sessions.filter(s=>s.locationId===l.id).length})).filter(l=>l.n>0).sort((a,b)=>b.n-a.n);
+    const maxR=Math.max(...Object.values(byMonth),1);
+    return <div>
+      <div className="hdr"><h1>Statistics</h1><p>Performance &amp; Records Analysis</p></div>
+      <div className="main">
+        <div className="sg" style={{marginBottom:12}}>
+          <div className="sb"><div className="val">{totalSessions}</div><div className="sl">Sessions</div></div>
+          <div className="sb"><div className="val">{totalRounds.toLocaleString()}</div><div className="sl">Rounds</div></div>
+          <div className="sb"><div className="val">{totalQuarry}</div><div className="sl">Quarry</div></div>
+          <div className="sb"><div className="val">{totalSessions>0?Math.round(totalRounds/totalSessions):0}</div><div className="sl">Avg Rds/Session</div></div>
+        </div>
+        {top.length>0&&<div className="card">
+          <div className="ct"><Icon name="paw" size={15}/>Top Quarry Species</div>
+          {top.map(([n,c])=><div key={n} style={{marginBottom:9}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}><span>{n}</span><span style={{color:t.accent,fontFamily:ff}}>{c}</span></div>
+            <div className="pbg"><div className="pb" style={{width:`${(c/top[0][1])*100}%`}}/></div>
+          </div>)}
+        </div>}
+        {byLoc.length>0&&<div className="card">
+          <div className="ct"><Icon name="map" size={15}/>Sessions by Location</div>
+          {byLoc.map(l=><div key={l.name} style={{marginBottom:9}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}><span>{l.name}</span><span style={{color:t.accent,fontFamily:ff}}>{l.n}</span></div>
+            <div className="pbg"><div className="pb" style={{width:`${(l.n/(byLoc[0]?.n||1))*100}%`}}/></div>
+          </div>)}
+        </div>}
+        {Object.keys(byMonth).length>0&&<div className="card">
+          <div className="ct"><Icon name="chart" size={15}/>Monthly Rounds</div>
+          {Object.entries(byMonth).sort().slice(-6).map(([m,r])=><div key={m} style={{marginBottom:9}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}><span>{m}</span><span style={{color:t.accent,fontFamily:ff}}>{r}</span></div>
+            <div className="pbg"><div className="pb" style={{width:`${(r/maxR)*100}%`}}/></div>
+          </div>)}
+        </div>}
+      </div>
+    </div>;
+  }
+
+  function FEO() {
+    return <div>
+      <div className="hdr"><h1>FEO Log</h1><p>Firearms Enquiry Officer Record</p></div>
+      <div className="main">
+        <Alerts/>
+        <div className="card">
+          <div className="ct"><Icon name="doc" size={15}/>Certificate Details</div>
+          <div className="row">
+            <div className="fld"><div className="lbl">FAC Number</div><div style={{fontFamily:ff,color:t.accent}}>{feo.fac||"Not set"}</div></div>
+            <div className="fld"><div className="lbl">FAC Expiry</div><div style={{color:daysUntil(feo.facExpiry)<180?t.danger:t.success}}>{fmt(feo.facExpiry)}</div></div>
+          </div>
+          <div className="row">
+            <div className="fld"><div className="lbl">SGC Number</div><div style={{fontFamily:ff,color:t.accent}}>{feo.sgc||"Not set"}</div></div>
+            <div className="fld"><div className="lbl">SGC Expiry</div><div style={{color:daysUntil(feo.sgcExpiry)<180?t.danger:t.success}}>{fmt(feo.sgcExpiry)}</div></div>
+          </div>
+          <button className="btn bsm" style={{marginTop:8}} onClick={()=>setPage("settings")}>Update in Settings</button>
+        </div>
+        <div className="card">
+          <div className="sh" style={{marginBottom:10}}>
+            <div className="ct" style={{marginBottom:0}}><Icon name="doc" size={15}/>Session Record</div>
+            <button className="btn bsm" onClick={generateFEO}><Icon name="pdf" size={13}/>Download</button>
+          </div>
+          {sessions.length===0?<div className="es">No sessions to display</div>:<div style={{overflowX:"auto"}}>
+            <table className="ft">
+              <thead><tr><th>Date</th><th>Location</th><th>Firearm</th><th>Cal.</th><th>Rds</th><th>Quarry</th></tr></thead>
+              <tbody>{[...sessions].reverse().map(s=>{
+                const loc=locations.find(l=>l.id===s.locationId);
+                const gun=firearms.find(f=>f.id===s.firearmId);
+                const q=Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(", ");
+                return <tr key={s.id}><td>{fmt(s.date)}</td><td>{loc?.name||"—"}</td><td>{gun?.name||"—"}</td><td>{gun?.calibre||"—"}</td><td>{s.rounds}</td><td>{q||"—"}</td></tr>;
+              })}</tbody>
+            </table>
+          </div>}
+        </div>
+      </div>
+    </div>;
+  }
+
+  function Settings() {
+    return <div>
+      <div className="hdr"><h1>Settings</h1><p>App Configuration &amp; Certificates</p></div>
+      <div className="main">
+        <div className="card">
+          <div className="ct"><Icon name="sun" size={15}/>Display Mode</div>
+          <div className="tbar">
+            {[["dark","Dark","moon"],["light","Light","sun"],["night","Night Vision","eye"]].map(([id,lbl,ic])=>(
+              <button key={id} className={`tbtn ${theme===id?"active":""}`} onClick={()=>setTheme(id)}>
+                <Icon name={ic} size={13}/>{lbl}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div className="ct"><Icon name="doc" size={15}/>Certificate &amp; Personal Details</div>
+          <div style={{background:t.accentBg,border:`1px solid ${t.accent}44`,borderRadius:8,padding:9,marginBottom:11,fontSize:12,color:t.textMuted}}>
+            You will be alerted 6 months before certificate expiry.
+          </div>
+          <div className="fld"><div className="lbl">Your Name</div><input className="inp" value={feo.name} onChange={e=>setFeo(f=>({...f,name:e.target.value}))} placeholder="Full name"/></div>
+          <div className="fld"><div className="lbl">Address</div><textarea className="inp" style={{minHeight:58}} value={feo.address} onChange={e=>setFeo(f=>({...f,address:e.target.value}))} placeholder="Home address"/></div>
+          <div className="row">
+            <div className="fld"><div className="lbl">FAC Number</div><input className="inp" value={feo.fac} onChange={e=>setFeo(f=>({...f,fac:e.target.value}))} placeholder="FAC12345"/></div>
+            <div className="fld"><div className="lbl">FAC Expiry</div><input className="inp" type="date" value={feo.facExpiry} onChange={e=>setFeo(f=>({...f,facExpiry:e.target.value}))}/></div>
+          </div>
+          <div className="row">
+            <div className="fld"><div className="lbl">SGC Number</div><input className="inp" value={feo.sgc} onChange={e=>setFeo(f=>({...f,sgc:e.target.value}))} placeholder="SGC12345"/></div>
+            <div className="fld"><div className="lbl">SGC Expiry</div><input className="inp" type="date" value={feo.sgcExpiry} onChange={e=>setFeo(f=>({...f,sgcExpiry:e.target.value}))}/></div>
+          </div>
+          <hr className="dvd"/>
+          <div className="row">
+            <div className="fld"><div className="lbl">FEO Name</div><input className="inp" value={feo.feoName} onChange={e=>setFeo(f=>({...f,feoName:e.target.value}))} placeholder="Officer name"/></div>
+            <div className="fld"><div className="lbl">FEO Contact</div><input className="inp" value={feo.feoContact} onChange={e=>setFeo(f=>({...f,feoContact:e.target.value}))} placeholder="Phone / email"/></div>
+          </div>
+        </div>
+      </div>
+    </div>;
+  }
+
+  // ---- MODALS ----
+  function FirearmModal() {
+    if(!showFirearmForm) return null;
+    const save = () => {
+      if(!newFirearm.name||!newFirearm.calibre) return;
+      if(editItem?._type==="firearm") setFirearms(f=>f.map(x=>x.id===editItem.id?{...newFirearm,id:editItem.id}:x));
+      else setFirearms(f=>[...f,{...newFirearm,id:gid()}]);
+      setShowFirearmForm(false); setEditItem(null); setNewFirearm(blankFirearm);
+    };
+    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowFirearmForm(false);}}>
+      <div className="modal">
+        <div className="mt">{editItem?"Edit Firearm":"Add Firearm"}<button className="xb" onClick={()=>setShowFirearmForm(false)}>×</button></div>
+        <div className="fld"><div className="lbl">Name *</div><input className="inp" value={newFirearm.name} onChange={e=>setNewFirearm(f=>({...f,name:e.target.value}))} placeholder="e.g. Tikka T3x .243"/></div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Type</div>
+            <select className="inp" value={newFirearm.type} onChange={e=>setNewFirearm(f=>({...f,type:e.target.value}))}>
+              <option value="">Select</option>{FIREARM_TYPES.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="fld"><div className="lbl">Calibre *</div>
+            <select className="inp" value={newFirearm.calibre} onChange={e=>setNewFirearm(f=>({...f,calibre:e.target.value}))}>
+              <option value="">Select</option>{CALIBRES.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="fld"><div className="lbl">Action</div>
+          <select className="inp" value={newFirearm.action} onChange={e=>setNewFirearm(f=>({...f,action:e.target.value}))}>
+            <option value="">Select action</option>{ACTION_TYPES.map(x=><option key={x}>{x}</option>)}
+          </select>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Manufacturer</div><input className="inp" value={newFirearm.manufacturer} onChange={e=>setNewFirearm(f=>({...f,manufacturer:e.target.value}))} placeholder="e.g. Remington"/></div>
+          <div className="fld"><div className="lbl">Serial No.</div><input className="inp" value={newFirearm.serial} onChange={e=>setNewFirearm(f=>({...f,serial:e.target.value}))}/></div>
+        </div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newFirearm.notes} onChange={e=>setNewFirearm(f=>({...f,notes:e.target.value}))}/></div>
+        <div className="fld">
+          <div className="lbl">Photo of Firearm</div>
+          {newFirearm.photo
+            ?<div><img src={newFirearm.photo} className="pp" alt="firearm"/><button className="btn bsm bdg" style={{marginTop:6}} onClick={()=>setNewFirearm(f=>({...f,photo:null}))}>Remove</button></div>
+            :<input type="file" accept="image/*" className="file-inp" onChange={e=>readImg(e.target.files[0],d=>setNewFirearm(f=>({...f,photo:d})))}/>
+          }
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>Save Firearm</button>
+          <button className="btn" onClick={()=>setShowFirearmForm(false)}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  function LocationModal() {
+    if(!showLocationForm) return null;
+    const save = () => {
+      if(!newLocation.name) return;
+      if(editItem?._type==="location") setLocations(l=>l.map(x=>x.id===editItem.id?{...newLocation,id:editItem.id}:x));
+      else setLocations(l=>[...l,{...newLocation,id:gid()}]);
+      setShowLocationForm(false); setEditItem(null); setNewLocation({name:"",type:"",county:"",notes:""});
+    };
+    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowLocationForm(false);}}>
+      <div className="modal">
+        <div className="mt">{editItem?"Edit Location":"Add Location"}<button className="xb" onClick={()=>setShowLocationForm(false)}>×</button></div>
+        <div className="fld"><div className="lbl">Name *</div><input className="inp" value={newLocation.name} onChange={e=>setNewLocation(l=>({...l,name:e.target.value}))} placeholder="e.g. Home Farm"/></div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Type</div>
+            <select className="inp" value={newLocation.type} onChange={e=>setNewLocation(l=>({...l,type:e.target.value}))}>
+              <option value="">Select</option>{LOCATION_TYPES.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="fld"><div className="lbl">County</div><input className="inp" value={newLocation.county} onChange={e=>setNewLocation(l=>({...l,county:e.target.value}))} placeholder="e.g. Yorkshire"/></div>
+        </div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newLocation.notes} onChange={e=>setNewLocation(l=>({...l,notes:e.target.value}))}/></div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>Save</button>
+          <button className="btn" onClick={()=>setShowLocationForm(false)}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  function SessionModal() {
+    if(!showSessionForm) return null;
+    const save = () => {
+      const s={...newSession,id:gid()};
+      setSessions(ss=>[...ss,s]);
+      const gun=firearms.find(f=>f.id===newSession.firearmId);
+      if(newSession.rounds>0){
+        if(newSession.ammoId){
+          // deduct from the specific selected batch
+          setAmmoStock(a=>a.map(x=>x.id===newSession.ammoId?{...x,qty:Math.max(0,x.qty-newSession.rounds)}:x));
+        } else if(gun){
+          // fallback: deduct from first matching calibre batch with stock
+          setAmmoStock(a=>{
+            let rem=newSession.rounds;
+            return a.map(x=>{
+              if(rem>0&&x.calibre===gun.calibre&&x.qty>0){
+                const take=Math.min(x.qty,rem); rem-=take; return {...x,qty:x.qty-take};
+              }
+              return x;
+            });
+          });
+        }
+      }
+      setShowSessionForm(false); setNewSession(blankSession);
+    };
+    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowSessionForm(false);}}>
+      <div className="modal">
+        <div className="mt">New Session<button className="xb" onClick={()=>setShowSessionForm(false)}>×</button></div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Date</div><input className="inp" type="date" value={newSession.date} onChange={e=>setNewSession(s=>({...s,date:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Purpose</div>
+            <select className="inp" value={newSession.purpose} onChange={e=>setNewSession(s=>({...s,purpose:e.target.value}))}>
+              <option value="target">Target Shooting</option><option value="pest">Pest Control</option>
+              <option value="stalking">Deer Stalking</option><option value="rough">Rough Shooting</option>
+              <option value="driven">Driven Game</option><option value="clay">Clay Shooting</option>
+            </select>
+          </div>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Location</div>
+            <select className="inp" value={newSession.locationId} onChange={e=>setNewSession(s=>({...s,locationId:e.target.value}))}>
+              <option value="">Select</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <div className="fld"><div className="lbl">Firearm</div>
+            <select className="inp" value={newSession.firearmId} onChange={e=>setNewSession(s=>({...s,firearmId:e.target.value,ammoId:""}))}>
+              <option value="">Select</option>{firearms.map(f=><option key={f.id} value={f.id}>{f.name} ({f.calibre})</option>)}
+            </select>
+          </div>
+        </div>
+        {(()=>{
+          const gun=firearms.find(f=>f.id===newSession.firearmId);
+          const matching=gun?ammoStock.filter(a=>a.calibre===gun.calibre):[];
+          return <div className="fld"><div className="lbl">Ammo Used {gun?`(${gun.calibre})`:""}</div>
+            <select className="inp" value={newSession.ammoId} onChange={e=>setNewSession(s=>({...s,ammoId:e.target.value}))} disabled={!gun}>
+              <option value="">{!gun?"Select firearm first":matching.length?"Select ammo batch":"No matching ammo in stock"}</option>
+              {matching.map(a=><option key={a.id} value={a.id}>{a.brand||"Unbranded"}{a.type?` ${a.type}`:""} — {a.qty} rds left</option>)}
+            </select>
+          </div>;
+        })()}
+        <div className="row">
+          <div className="fld"><div className="lbl">Rounds Fired</div>
+            <div className="ci">
+              <button className="cbtn" onClick={()=>setNewSession(s=>({...s,rounds:Math.max(0,s.rounds-1)}))}>−</button>
+              <span className="cv">{newSession.rounds}</span>
+              <button className="cbtn" onClick={()=>setNewSession(s=>({...s,rounds:s.rounds+1}))}>+</button>
+              <input className="inp" type="number" value={newSession.rounds} onChange={e=>setNewSession(s=>({...s,rounds:parseInt(e.target.value)||0}))} style={{width:70}}/>
+            </div>
+          </div>
+          <div className="fld"><div className="lbl">Distance (m)</div><input className="inp" type="number" value={newSession.distance} onChange={e=>setNewSession(s=>({...s,distance:e.target.value}))} placeholder="100"/></div>
+        </div>
+        <hr className="dvd"/>
+        <div className="lbl" style={{marginBottom:7}}>Weather Conditions</div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Conditions</div>
+            <select className="inp" value={newSession.weather} onChange={e=>setNewSession(s=>({...s,weather:e.target.value}))}>
+              <option value="">Select</option>{WEATHER_CONDITIONS.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="fld"><div className="lbl">Wind Direction</div>
+            <select className="inp" value={newSession.wind} onChange={e=>setNewSession(s=>({...s,wind:e.target.value}))}>
+              <option value="">Select</option>{WIND_DIRECTIONS.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Wind Speed (mph)</div><input className="inp" type="number" value={newSession.windSpeed} onChange={e=>setNewSession(s=>({...s,windSpeed:e.target.value}))} placeholder="0"/></div>
+          <div className="fld"><div className="lbl">Temperature (°C)</div><input className="inp" type="number" value={newSession.temp} onChange={e=>setNewSession(s=>({...s,temp:e.target.value}))} placeholder="15"/></div>
+        </div>
+        <hr className="dvd"/>
+        <div className="lbl" style={{marginBottom:7}}>Quarry Bag — UK Legal Only</div>
+        <div className="qg">
+          {UK_QUARRY.map(q=>(
+            <button key={q} className={`qi ${(newSession.quarryBag[q]||0)>0?"sel":""}`}
+              onClick={()=>setNewSession(s=>({...s,quarryBag:{...s.quarryBag,[q]:(s.quarryBag[q]||0)+1}}))}>
+              {q}{(newSession.quarryBag[q]||0)>0&&<strong> ×{newSession.quarryBag[q]}</strong>}
+            </button>
+          ))}
+        </div>
+        {Object.values(newSession.quarryBag).some(v=>v>0)&&
+          <button className="btn bsm bdg" style={{marginTop:7}} onClick={()=>setNewSession(s=>({...s,quarryBag:{}}))}>Clear Bag</button>}
+        <hr className="dvd"/>
+        <div className="fld">
+          <div className="lbl">Target Photos</div>
+          <input type="file" accept="image/*" className="file-inp"
+            onChange={e=>readImg(e.target.files[0],d=>setNewSession(s=>({...s,targetPhotos:[...s.targetPhotos,d]})))}/>
+          {newSession.targetPhotos.length>0&&<div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+            {newSession.targetPhotos.map((p,i)=>(
+              <div key={i} style={{position:"relative"}}>
+                <img src={p} alt="" style={{width:70,height:70,objectFit:"cover",borderRadius:8}}/>
+                <button onClick={()=>setNewSession(s=>({...s,targetPhotos:s.targetPhotos.filter((_,idx)=>idx!==i)}))}
+                  style={{position:"absolute",top:-4,right:-4,width:20,height:20,borderRadius:"50%",background:t.danger,color:"white",border:"none",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+              </div>
+            ))}
+          </div>}
+        </div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newSession.notes} onChange={e=>setNewSession(s=>({...s,notes:e.target.value}))} placeholder="Session notes..."/></div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>Save Session</button>
+          <button className="btn" onClick={()=>setShowSessionForm(false)}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  function AmmoModal() {
+    if(!showAmmoForm) return null;
+    const save = () => {
+      if(!newAmmo.calibre) return;
+      const ex=ammoStock.find(a=>a.calibre===newAmmo.calibre&&a.brand===newAmmo.brand);
+      if(ex) setAmmoStock(a=>a.map(x=>x.id===ex.id?{...x,qty:x.qty+parseInt(newAmmo.qty)}:x));
+      else setAmmoStock(a=>[...a,{...newAmmo,qty:parseInt(newAmmo.qty),id:gid()}]);
+      setShowAmmoForm(false); setNewAmmo(blankAmmo);
+    };
+    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowAmmoForm(false);}}>
+      <div className="modal">
+        <div className="mt">Add Ammunition<button className="xb" onClick={()=>setShowAmmoForm(false)}>×</button></div>
+        <div className="fld"><div className="lbl">Calibre *</div>
+          <select className="inp" value={newAmmo.calibre} onChange={e=>setNewAmmo(a=>({...a,calibre:e.target.value}))}>
+            <option value="">Select</option>{CALIBRES.map(x=><option key={x}>{x}</option>)}
+          </select>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Brand</div><input className="inp" value={newAmmo.brand} onChange={e=>setNewAmmo(a=>({...a,brand:e.target.value}))} placeholder="e.g. Hornady"/></div>
+          <div className="fld"><div className="lbl">Type</div><input className="inp" value={newAmmo.type} onChange={e=>setNewAmmo(a=>({...a,type:e.target.value}))} placeholder="e.g. 55gr BTHP"/></div>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Quantity</div><input className="inp" type="number" value={newAmmo.qty} onChange={e=>setNewAmmo(a=>({...a,qty:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Purchased</div><input className="inp" type="date" value={newAmmo.purchased} onChange={e=>setNewAmmo(a=>({...a,purchased:e.target.value}))}/></div>
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>Save</button>
+          <button className="btn" onClick={()=>setShowAmmoForm(false)}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  function LandModal() {
+    if(!showLandForm) return null;
+    const save = () => {
+      if(!newLand.name) return;
+      if(editItem?._type==="land") setLand(l=>l.map(x=>x.id===editItem.id?{...newLand,id:editItem.id}:x));
+      else setLand(l=>[...l,{...newLand,id:gid()}]);
+      setShowLandForm(false); setEditItem(null); setNewLand(blankLand);
+    };
+    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowLandForm(false);}}>
+      <div className="modal">
+        <div className="mt">{editItem?"Edit Land":"Add Land"}<button className="xb" onClick={()=>setShowLandForm(false)}>×</button></div>
+        <div className="fld"><div className="lbl">Name *</div><input className="inp" value={newLand.name} onChange={e=>setNewLand(l=>({...l,name:e.target.value}))} placeholder="e.g. Greenacres Farm"/></div>
+        <div className="row">
+          <div className="fld"><div className="lbl">County</div><input className="inp" value={newLand.county} onChange={e=>setNewLand(l=>({...l,county:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Area (acres)</div><input className="inp" type="number" value={newLand.acres} onChange={e=>setNewLand(l=>({...l,acres:e.target.value}))}/></div>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Landowner</div><input className="inp" value={newLand.owner} onChange={e=>setNewLand(l=>({...l,owner:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Contact</div><input className="inp" value={newLand.contact} onChange={e=>setNewLand(l=>({...l,contact:e.target.value}))}/></div>
+        </div>
+        <div className="fld"><div className="lbl">Permission Date</div><input className="inp" type="date" value={newLand.permission} onChange={e=>setNewLand(l=>({...l,permission:e.target.value}))}/></div>
+        <div className="fld">
+          <div className="lbl" style={{marginBottom:7}}>Species Present</div>
+          <div className="qg">{UK_QUARRY.slice(0,22).map(q=>(
+            <button key={q} className={`qi ${newLand.species?.includes(q)?"sel":""}`}
+              onClick={()=>setNewLand(l=>({...l,species:l.species?.includes(q)?l.species.filter(s=>s!==q):[...(l.species||[]),q]}))}>
+              {q}
+            </button>
+          ))}</div>
+        </div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newLand.notes} onChange={e=>setNewLand(l=>({...l,notes:e.target.value}))}/></div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>Save</button>
+          <button className="btn" onClick={()=>setShowLandForm(false)}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  function MaintModal() {
+    if(!showMaintForm) return null;
+    const save = () => {
+      if(!newMaint.firearmId) return;
+      setMaintenance(m=>[...m,{...newMaint,id:gid()}]);
+      setShowMaintForm(false); setNewMaint(blankMaint);
+    };
+    return <div className="ov" onClick={e=>{if(e.target.classList.contains("ov"))setShowMaintForm(false);}}>
+      <div className="modal">
+        <div className="mt">Log Maintenance<button className="xb" onClick={()=>setShowMaintForm(false)}>×</button></div>
+        <div className="fld"><div className="lbl">Firearm *</div>
+          <select className="inp" value={newMaint.firearmId} onChange={e=>setNewMaint(m=>({...m,firearmId:e.target.value}))}>
+            <option value="">Select</option>{firearms.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Date</div><input className="inp" type="date" value={newMaint.date} onChange={e=>setNewMaint(m=>({...m,date:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Service Type</div>
+            <select className="inp" value={newMaint.type} onChange={e=>setNewMaint(m=>({...m,type:e.target.value}))}>
+              <option value="">Select</option>
+              {["Clean & Oil","Full Strip","Barrel Clean","Scope Check","Zero Check","Parts Replacement","Gunsmith Service","Annual Service"].map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="fld"><div className="lbl">Parts / Materials</div><input className="inp" value={newMaint.parts} onChange={e=>setNewMaint(m=>({...m,parts:e.target.value}))} placeholder="e.g. Bore solvent, oil"/></div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newMaint.notes} onChange={e=>setNewMaint(m=>({...m,notes:e.target.value}))}/></div>
+        <div className="fld"><div className="lbl">Next Service Due</div><input className="inp" type="date" value={newMaint.nextDue} onChange={e=>setNewMaint(m=>({...m,nextDue:e.target.value}))}/></div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>Save Record</button>
+          <button className="btn" onClick={()=>setShowMaintForm(false)}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  const PAGES = {dashboard:<Dashboard/>,firearms:<Firearms/>,ammo:<Ammo/>,locations:<Locations/>,sessions:<Sessions/>,land:<Land/>,maintenance:<Maintenance/>,stats:<Stats/>,feo:<FEO/>,settings:<Settings/>};
+
+  return (
+    <div className="app">
+      <style dangerouslySetInnerHTML={{__html:css}}/>
+      {theme==="night"&&<div className="nvscan"/>}
+      <nav className="nav">
+        <div className="nav-inner">
+          {NAV.map(n=>(
+            <button key={n.id} className={`nb ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
+              <Icon name={n.icon} size={16}/>{n.label}
+            </button>
+          ))}
+        </div>
+      </nav>
+      {PAGES[page]||<Dashboard/>}
+      <FirearmModal/>
+      <LocationModal/>
+      <SessionModal/>
+      <AmmoModal/>
+      <LandModal/>
+      <MaintModal/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
