@@ -56,14 +56,15 @@ const save = (key, val) => {
 const load = (key, def) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch(e) { return def; } };
 
 const ICONS = {
-  gun: "M2 12h2l1-3h14l1 3h2v2h-1l-1 2H5l-1-2H3v-2zm3.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm11 0a1.5 1.5 0 100 3 1.5 1.5 0 000-3z",
+  gun: "M2 12h13l1-2h2v1h4v2h-4v1h-2v-1h-3l-2 3H7v-3H5v3H3v-3H2z M15 10v2 M17 10v2",
   target: "M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2a8 8 0 110 16A8 8 0 0112 4zm0 3a5 5 0 100 10A5 5 0 0012 7zm0 2a3 3 0 110 6 3 3 0 010-6zm0 1.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z",
   map: "M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6zm6-1v13m6-10v13",
-  ammo: "M9 2h6v4l2 2v12H7V8l2-2V2zm3 12a2 2 0 100-4 2 2 0 000 4z",
+  ammo: "M12 2 C10 2 9 4 9 6 L9 9 L15 9 L15 6 C15 4 14 2 12 2 Z M9 9 L9 21 L15 21 L15 9 M9 12 L15 12",
   paw: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7",
   chart: "M3 3v18h18M7 16l4-4 4 4 4-8",
   wrench: "M14.7 6.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-1-1a1 1 0 010-1.4l8-8a1 1 0 011.4 0l1 1zm-9 9L4 19l3.7-1.7L14 11l-2-2-6.3 6.3z",
   doc: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5M8 13h8M8 17h5",
+  police: "M7 11 L7 8 C7 6 8 5 9 4.5 L9 4 C9 3 10 2.5 12 2.5 C14 2.5 15 3 15 4 L15 4.5 C16 5 17 6 17 8 L17 11 M5 11 L19 11 L19 13 L5 13 Z M8 13 L8 18 C8 19.5 9.5 21 12 21 C14.5 21 16 19.5 16 18 L16 13 M11 5.5 L13 5.5 L13 7 L11 7 Z",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zm7.07-4.27l1.42-1.1a1 1 0 00.22-1.27l-1.5-2.6a1 1 0 00-1.22-.44l-1.67.67a6.6 6.6 0 00-1.54-.9l-.25-1.78A1 1 0 0013.35 3h-3a1 1 0 00-.99.86l-.25 1.78a6.6 6.6 0 00-1.54.9L5.9 5.87a1 1 0 00-1.22.44l-1.5 2.6a1 1 0 00.22 1.27l1.42 1.1a6.9 6.9 0 000 1.44l-1.42 1.1a1 1 0 00-.22 1.27l1.5 2.6a1 1 0 001.22.44l1.67-.67c.48.34 1 .62 1.54.9l.25 1.78A1 1 0 0010.35 21h3a1 1 0 00.99-.86l.25-1.78a6.6 6.6 0 001.54-.9l1.67.67a1 1 0 001.22-.44l1.5-2.6a1 1 0 00-.22-1.27l-1.42-1.1c.04-.48.04-.96 0-1.44z",
   land: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z",
   plus: "M12 5v14M5 12h14",
@@ -341,7 +342,7 @@ function App() {
     {id:"land",icon:"land",label:"Land"},
     {id:"maintenance",icon:"wrench",label:"Maint."},
     {id:"stats",icon:"chart",label:"Stats"},
-    {id:"feo",icon:"doc",label:"FEO"},
+    {id:"feo",icon:"police",label:"FEO"},
     {id:"settings",icon:"settings",label:"Settings"},
   ];
 
@@ -659,7 +660,7 @@ function App() {
       <div className="main">
         {Alerts()}
         <div className="card">
-          <div className="ct"><Icon name="doc" size={15}/>Certificate Details</div>
+          <div className="ct"><Icon name="police" size={15}/>Certificate Details</div>
           <div className="row">
             <div className="fld"><div className="lbl">FAC Number</div><div style={{fontFamily:ff,color:t.accent}}>{feo.fac||"Not set"}</div></div>
             <div className="fld"><div className="lbl">FAC Expiry</div><div style={{color:daysUntil(feo.facExpiry)<180?t.danger:t.success}}>{fmt(feo.facExpiry)}</div></div>
@@ -708,7 +709,7 @@ function App() {
         <div className="card">
           <div className="ct"><Icon name="doc" size={15}/>Backup &amp; Restore</div>
           <div style={{background:t.accentBg,border:`1px solid ${t.accent}44`,borderRadius:8,padding:9,marginBottom:11,fontSize:12,color:t.textMuted,lineHeight:1.5}}>
-            <strong style={{color:t.accent}}>Important:</strong> this app stores data in your browser, which can be cleared if you reinstall, switch device, or open a different copy of the file. Export a backup regularly and keep the .json file somewhere safe (e.g. cloud storage). You can restore it any time, on any device.
+            Your data is stored on this device only — it isn't uploaded anywhere. With the app installed to your home screen, storage is durable and persists between sessions. Export a backup regularly anyway, in case you switch phones, uninstall, or factory reset.
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button className="btn bsl" onClick={exportData}><Icon name="doc" size={13}/>Export Backup</button>
@@ -869,7 +870,11 @@ function App() {
               <option value="">Select</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </div>
-          <div className="fld"><div className="lbl">Firearm</div>
+          <div className="fld">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div className="lbl" style={{marginBottom:0}}>Firearm</div>
+              <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} onClick={()=>{setEditItem(null);setNewFirearm(blankFirearm);setShowFirearmForm(true);}}>+ New</button>
+            </div>
             <select className="inp" value={newSession.firearmId} onChange={e=>setNewSession(s=>({...s,firearmId:e.target.value,ammoId:""}))}>
               <option value="">Select</option>{firearms.map(f=><option key={f.id} value={f.id}>{f.name} ({f.calibre})</option>)}
             </select>
@@ -878,7 +883,12 @@ function App() {
         {(()=>{
           const gun=firearms.find(f=>f.id===newSession.firearmId);
           const matching=gun?ammoStock.filter(a=>a.calibre===gun.calibre):[];
-          return <div className="fld"><div className="lbl">Ammo Used {gun?`(${gun.calibre})`:""}</div>
+          return <div className="fld">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <div className="lbl" style={{marginBottom:0}}>Ammo Used {gun?`(${gun.calibre})`:""}</div>
+              <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} disabled={!gun}
+                onClick={()=>{setNewAmmo({...blankAmmo,calibre:gun?.calibre||""});setShowAmmoForm(true);}}>+ Add Stock</button>
+            </div>
             <select className="inp" value={newSession.ammoId} onChange={e=>setNewSession(s=>({...s,ammoId:e.target.value}))} disabled={!gun}>
               <option value="">{!gun?"Select firearm first":matching.length?"Select ammo batch":"No matching ammo in stock"}</option>
               {matching.map(a=><option key={a.id} value={a.id}>{a.brand||"Unbranded"}{a.type?` ${a.type}`:""} — {a.qty} rds left</option>)}
