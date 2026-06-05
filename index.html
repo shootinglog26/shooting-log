@@ -360,7 +360,7 @@ function App() {
     return <div>
       <div className="hdr"><h1>Shooting Log</h1><p>United Kingdom · Licensed Field Sports Record</p></div>
       <div className="main">
-        <Alerts/>
+        {Alerts()}
         <div className="sg" style={{marginBottom:12}}>
           <div className="sb"><div className="val">{totalSessions}</div><div className="sl">Sessions</div></div>
           <div className="sb"><div className="val">{totalRounds.toLocaleString()}</div><div className="sl">Rounds Fired</div></div>
@@ -657,7 +657,7 @@ function App() {
     return <div>
       <div className="hdr"><h1>FEO Log</h1><p>Firearms Enquiry Officer Record</p></div>
       <div className="main">
-        <Alerts/>
+        {Alerts()}
         <div className="card">
           <div className="ct"><Icon name="doc" size={15}/>Certificate Details</div>
           <div className="row">
@@ -1057,7 +1057,7 @@ function App() {
     </div>;
   }
 
-  const PAGES = {dashboard:<Dashboard/>,firearms:<Firearms/>,ammo:<Ammo/>,locations:<Locations/>,sessions:<Sessions/>,land:<Land/>,maintenance:<Maintenance/>,stats:<Stats/>,feo:<FEO/>,settings:<Settings/>};
+  const PAGES = {dashboard:Dashboard,firearms:Firearms,ammo:Ammo,locations:Locations,sessions:Sessions,land:Land,maintenance:Maintenance,stats:Stats,feo:FEO,settings:Settings};
 
   return (
     <div className="app">
@@ -1072,13 +1072,13 @@ function App() {
           ))}
         </div>
       </nav>
-      {PAGES[page]||<Dashboard/>}
-      <FirearmModal/>
-      <LocationModal/>
-      <SessionModal/>
-      <AmmoModal/>
-      <LandModal/>
-      <MaintModal/>
+      {(PAGES[page]||Dashboard)()}
+      {FirearmModal()}
+      {LocationModal()}
+      {SessionModal()}
+      {AmmoModal()}
+      {LandModal()}
+      {MaintModal()}
     </div>
   );
 }
