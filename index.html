@@ -92,6 +92,8 @@ const ICONS = {
   wrench: "M14.7 6.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-1-1a1 1 0 010-1.4l8-8a1 1 0 011.4 0l1 1zm-9 9L4 19l3.7-1.7L14 11l-2-2-6.3 6.3z",
   doc: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1v5h5M8 13h8M8 17h5",
   police: "M7 11 L7 8 C7 6 8 5 9 4.5 L9 4 C9 3 10 2.5 12 2.5 C14 2.5 15 3 15 4 L15 4.5 C16 5 17 6 17 8 L17 11 M5 11 L19 11 L19 13 L5 13 Z M8 13 L8 18 C8 19.5 9.5 21 12 21 C14.5 21 16 19.5 16 18 L16 13 M11 5.5 L13 5.5 L13 7 L11 7 Z",
+  calendar: "M3 6h18M3 6v14a2 2 0 002 2h14a2 2 0 002-2V6M3 6V4a2 2 0 012-2h14a2 2 0 012 2v2M8 2v4M16 2v4M3 10h18",
+  bell: "M18 16v-5a6 6 0 10-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 004 0",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zm7.07-4.27l1.42-1.1a1 1 0 00.22-1.27l-1.5-2.6a1 1 0 00-1.22-.44l-1.67.67a6.6 6.6 0 00-1.54-.9l-.25-1.78A1 1 0 0013.35 3h-3a1 1 0 00-.99.86l-.25 1.78a6.6 6.6 0 00-1.54.9L5.9 5.87a1 1 0 00-1.22.44l-1.5 2.6a1 1 0 00.22 1.27l1.42 1.1a6.9 6.9 0 000 1.44l-1.42 1.1a1 1 0 00-.22 1.27l1.5 2.6a1 1 0 001.22.44l1.67-.67c.48.34 1 .62 1.54.9l.25 1.78A1 1 0 0010.35 21h3a1 1 0 00.99-.86l.25-1.78a6.6 6.6 0 001.54-.9l1.67.67a1 1 0 001.22-.44l1.5-2.6a1 1 0 00-.22-1.27l-1.42-1.1c.04-.48.04-.96 0-1.44z",
   land: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z",
   plus: "M12 5v14M5 12h14",
@@ -143,6 +145,7 @@ function App() {
   const [ammoStock, setAmmoStock] = useState(() => load("sl_ammo",[]));
   const [land, setLand] = useState(() => load("sl_land",[]));
   const [maintenance, setMaintenance] = useState(() => load("sl_maintenance",[]));
+  const [planned, setPlanned] = useState(() => load("sl_planned",[]));
   const [feo, setFeo] = useState(() => load("sl_feo",{fac:"",facExpiry:"",sgc:"",sgcExpiry:"",name:"",address:"",feoName:"",feoContact:""}));
   const [alerts, setAlerts] = useState([]);
   const [editItem, setEditItem] = useState(null);
@@ -152,12 +155,16 @@ function App() {
   const [showAmmoForm, setShowAmmoForm] = useState(false);
   const [showLandForm, setShowLandForm] = useState(false);
   const [showMaintForm, setShowMaintForm] = useState(false);
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => { const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [weatherCache, setWeatherCache] = useState({});
 
   const blankFirearm = {name:"",type:"",action:"",calibre:"",serial:"",manufacturer:"",notes:"",photo:null};
   const blankSession = {date:td(),locationId:"",firearmId:"",ammoId:"",rounds:0,weather:"",wind:"",windSpeed:"",temp:"",quarryBag:{},notes:"",targetPhotos:[],distance:"",purpose:"target"};
   const blankAmmo = {calibre:"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""};
   const blankLand = {name:"",acres:"",county:"",owner:"",contact:"",permission:td(),notes:"",species:[]};
   const blankMaint = {firearmId:"",date:td(),type:"",parts:"",notes:"",nextDue:""};
+  const blankPlan = {date:td(),time:"",locationId:"",landId:"",firearmIds:[],purpose:"target",party:"",species:[],notes:"",recurring:"none"};
 
   const [newFirearm, setNewFirearm] = useState(blankFirearm);
   const [newLocation, setNewLocation] = useState({name:"",type:"",county:"",notes:""});
@@ -165,6 +172,7 @@ function App() {
   const [newAmmo, setNewAmmo] = useState(blankAmmo);
   const [newLand, setNewLand] = useState(blankLand);
   const [newMaint, setNewMaint] = useState(blankMaint);
+  const [newPlan, setNewPlan] = useState(blankPlan);
 
   const t = getTheme(theme);
   const ff = t.mono ? "'Courier New',monospace" : "'Cinzel','Georgia',serif";
@@ -177,6 +185,7 @@ function App() {
   useEffect(()=>{save("sl_ammo",ammoStock);},[ammoStock]);
   useEffect(()=>{save("sl_land",land);},[land]);
   useEffect(()=>{save("sl_maintenance",maintenance);},[maintenance]);
+  useEffect(()=>{save("sl_planned",planned);},[planned]);
   useEffect(()=>{save("sl_feo",feo);},[feo]);
 
   useEffect(()=>{
@@ -190,6 +199,80 @@ function App() {
   function gid(){return Math.random().toString(36).substr(2,9);}
   function fmt(d){return d?new Date(d).toLocaleDateString("en-GB"):"—";}
   function daysUntil(d){return d?Math.floor((new Date(d)-new Date())/86400000):null;}
+
+  // ---- WEATHER (Open-Meteo, no API key needed) ----
+  // We need lat/lng. Use location's stored coords if present, else geocode location/county once.
+  async function getWeather(dateStr, locationId) {
+    const key = `${locationId}|${dateStr}`;
+    if (weatherCache[key]) return weatherCache[key];
+    const loc = locations.find(l=>l.id===locationId);
+    if (!loc) return null;
+    try {
+      let lat = loc.lat, lng = loc.lng;
+      if (!lat || !lng) {
+        // Geocode via Open-Meteo's free geocoding API
+        const q = encodeURIComponent(`${loc.name}${loc.county?", "+loc.county:""}, UK`);
+        const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=1&country=GB`).then(r=>r.json());
+        if (!geo.results || !geo.results.length) return null;
+        lat = geo.results[0].latitude; lng = geo.results[0].longitude;
+        // Cache lat/lng back to the location for reuse
+        setLocations(ls=>ls.map(x=>x.id===locationId?{...x,lat,lng}:x));
+      }
+      const date = dateStr;
+      // Open-Meteo gives up to 16-day forecast; check the day is within range
+      const today = new Date(); today.setHours(0,0,0,0);
+      const target = new Date(date); target.setHours(0,0,0,0);
+      const daysAhead = Math.floor((target-today)/86400000);
+      if (daysAhead < 0 || daysAhead > 15) return {tooFar:true};
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset&timezone=Europe%2FLondon&start_date=${date}&end_date=${date}`;
+      const w = await fetch(url).then(r=>r.json());
+      if (!w.daily || !w.daily.time?.length) return null;
+      const result = {
+        code: w.daily.weather_code[0],
+        tempMax: w.daily.temperature_2m_max[0],
+        tempMin: w.daily.temperature_2m_min[0],
+        precip: w.daily.precipitation_sum[0],
+        windSpeed: Math.round(w.daily.wind_speed_10m_max[0]),
+        windDir: w.daily.wind_direction_10m_dominant[0],
+        sunrise: w.daily.sunrise[0],
+        sunset: w.daily.sunset[0],
+      };
+      setWeatherCache(c=>({...c,[key]:result}));
+      return result;
+    } catch(e) { return null; }
+  }
+
+  function weatherDesc(code) {
+    if (code==null) return "—";
+    if (code===0) return "Clear";
+    if (code<=3) return "Partly cloudy";
+    if (code<=48) return "Foggy";
+    if (code<=57) return "Drizzle";
+    if (code<=67) return "Rain";
+    if (code<=77) return "Snow";
+    if (code<=82) return "Rain showers";
+    if (code<=86) return "Snow showers";
+    if (code<=99) return "Thunder";
+    return "—";
+  }
+  function weatherEmoji(code) {
+    if (code==null) return "";
+    if (code===0) return "☀️";
+    if (code<=2) return "🌤";
+    if (code===3) return "☁️";
+    if (code<=48) return "🌫";
+    if (code<=57) return "🌦";
+    if (code<=67) return "🌧";
+    if (code<=77) return "❄️";
+    if (code<=82) return "🌦";
+    if (code<=86) return "🌨";
+    return "⛈";
+  }
+  function windCompass(deg){
+    if(deg==null) return "";
+    const dirs=["N","NE","E","SE","S","SW","W","NW"];
+    return dirs[Math.round(deg/45)%8];
+  }
 
   function readImg(file,cb){
     if(!file||!file.type.startsWith("image/"))return;
@@ -294,8 +377,8 @@ function App() {
   // ---- BACKUP / RESTORE ----
   function exportData() {
     const data = {
-      version: 1, exported: new Date().toISOString(),
-      firearms, locations, sessions, ammoStock, land, maintenance, feo, theme
+      version: 2, exported: new Date().toISOString(),
+      firearms, locations, sessions, ammoStock, land, maintenance, planned, feo, theme
     };
     const b = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
     const u = URL.createObjectURL(b);
@@ -319,6 +402,7 @@ function App() {
         if(d.ammoStock) setAmmoStock(d.ammoStock);
         if(d.land) setLand(d.land);
         if(d.maintenance) setMaintenance(d.maintenance);
+        if(d.planned) setPlanned(d.planned);
         if(d.feo) setFeo(d.feo);
         if(d.theme) setTheme(d.theme);
         alert("Backup restored successfully.");
@@ -367,6 +451,7 @@ function App() {
     {id:"ammo",icon:"ammo",label:"Ammo"},
     {id:"locations",icon:"map",label:"Locations"},
     {id:"sessions",icon:"paw",label:"Sessions"},
+    {id:"planner",icon:"calendar",label:"Planner"},
     {id:"land",icon:"land",label:"Land"},
     {id:"maintenance",icon:"wrench",label:"Maint."},
     {id:"stats",icon:"chart",label:"Stats"},
@@ -580,6 +665,152 @@ function App() {
             </div>
           </div>;
         })}
+      </div>
+    </div>;
+  }
+
+  function Planner() {
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const upcoming = [...planned].filter(p=>new Date(p.date)>=today0).sort((a,b)=>a.date.localeCompare(b.date)||((a.time||"")).localeCompare(b.time||""));
+    const past = [...planned].filter(p=>new Date(p.date)<today0).sort((a,b)=>b.date.localeCompare(a.date));
+
+    // Build month grid
+    const year = calMonth.getFullYear(), month = calMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month+1, 0);
+    const startWeekday = (firstDay.getDay()+6)%7; // Monday-first
+    const daysInMonth = lastDay.getDate();
+    const cells = [];
+    for (let i=0;i<startWeekday;i++) cells.push(null);
+    for (let d=1;d<=daysInMonth;d++) cells.push(d);
+    while (cells.length % 7) cells.push(null);
+
+    const dateKey = (d) => `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const plannedOnDay = (d) => planned.filter(p=>p.date===dateKey(d));
+    const sessionsOnDay = (d) => sessions.filter(s=>s.date===dateKey(d));
+    const isToday = (d) => { const t=new Date(); return t.getFullYear()===year && t.getMonth()===month && t.getDate()===d; };
+
+    const PlanCard = ({p, isPast}) => {
+      const loc = locations.find(l=>l.id===p.locationId);
+      const lnd = land.find(l=>l.id===p.landId);
+      const guns = (p.firearmIds||[]).map(id=>firearms.find(f=>f.id===id)).filter(Boolean);
+      const planDate = new Date(p.date);
+      const daysAway = Math.ceil((planDate - new Date())/86400000);
+      const [weather, setWeather] = useState(null);
+      const [loadingW, setLoadingW] = useState(false);
+      const fetchW = async () => {
+        if (!p.locationId) return;
+        setLoadingW(true);
+        const w = await getWeather(p.date, p.locationId);
+        setWeather(w); setLoadingW(false);
+      };
+      useEffect(()=>{
+        if (!isPast && p.locationId && daysAway>=0 && daysAway<=15) fetchW();
+      }, []);
+
+      return <div className="card" style={isPast?{opacity:.65}:{}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <div style={{flex:1,minWidth:0}}>
+            <h3 style={{fontFamily:ff,fontSize:14}}>
+              {fmt(p.date)}{p.time?` · ${p.time}`:""}
+              {!isPast && daysAway>=0 && daysAway<=2 && <span className="badge" style={{marginLeft:6,borderColor:t.accent,color:t.accent}}>{daysAway===0?"Today":daysAway===1?"Tomorrow":`In ${daysAway} days`}</span>}
+            </h3>
+            <p style={{fontSize:12,color:t.textMuted,marginTop:2}}>{loc?.name||lnd?.name||"—"}</p>
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:6}}>
+              <span className="badge">{({target:"Target",pest:"Pest Control",stalking:"Stalking",rough:"Rough",driven:"Driven Game",wildfowling:"Wildfowling",clay:"Clay",zero:"Zeroing",practice:"Practice"})[p.purpose]||p.purpose}</span>
+              {guns.map(g=><span key={g.id} className="badge">{g.name}</span>)}
+              {p.recurring && p.recurring!=="none" && <span className="badge">↻ {p.recurring}</span>}
+            </div>
+            {p.species?.length>0 && <div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
+              {p.species.map(sp=><span key={sp} className="badge">{sp}</span>)}
+            </div>}
+            {p.party && <p style={{fontSize:12,color:t.textMuted,marginTop:5}}>With: {p.party}</p>}
+            {p.notes && <p style={{fontSize:12,color:t.textMuted,marginTop:5,fontStyle:"italic"}}>{p.notes}</p>}
+            {!isPast && (loadingW || weather) && <div style={{marginTop:8,padding:8,background:t.accentBg,borderRadius:8,fontSize:12}}>
+              {loadingW ? <span style={{color:t.textMuted}}>Loading forecast…</span>
+                : weather?.tooFar ? <span style={{color:t.textMuted}}>Forecast available within 15 days</span>
+                : weather ? <div>
+                    <div style={{fontFamily:ff,color:t.accent,marginBottom:3}}>{weatherEmoji(weather.code)} {weatherDesc(weather.code)}</div>
+                    <div style={{color:t.textMuted,fontSize:11}}>
+                      {Math.round(weather.tempMin)}° – {Math.round(weather.tempMax)}°C · 
+                      Wind {windCompass(weather.windDir)} {weather.windSpeed}mph · 
+                      Rain {weather.precip}mm
+                    </div>
+                    <div style={{color:t.textMuted,fontSize:11,marginTop:2}}>
+                      ☀ Sunrise {weather.sunrise?.slice(-5)} · Sunset {weather.sunset?.slice(-5)}
+                    </div>
+                  </div>
+                : <span style={{color:t.textMuted}}>Forecast unavailable</span>}
+            </div>}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {!isPast && <button className="btn bsm" onClick={()=>{
+              setNewSession({...blankSession,date:p.date,locationId:p.locationId,firearmId:p.firearmIds?.[0]||"",purpose:p.purpose,notes:p.notes||""});
+              setShowSessionForm(true);
+            }}>Log Session</button>}
+            <button className="btn bsm" onClick={()=>{setEditItem({...p,_type:"plan"});setNewPlan(p);setShowPlanForm(true);}}>Edit</button>
+            <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this planned shoot?"))setPlanned(ps=>ps.filter(x=>x.id!==p.id));}}><Icon name="trash" size={12}/></button>
+          </div>
+        </div>
+      </div>;
+    };
+
+    return <div>
+      <div className="hdr"><h1>Planner</h1><p>Upcoming Shoots &amp; Forecasts</p></div>
+      <div className="main">
+        <div className="sh">
+          <div className="ct"><Icon name="calendar" size={15}/>{calMonth.toLocaleString("en-GB",{month:"long",year:"numeric"})}</div>
+          <button className="btn" onClick={()=>{setEditItem(null);setNewPlan({...blankPlan,date:td()});setShowPlanForm(true);}}><Icon name="plus" size={13}/>Plan Shoot</button>
+        </div>
+        <div className="card" style={{padding:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <button className="btn bsm" onClick={()=>setCalMonth(new Date(year,month-1,1))}>‹</button>
+            <button className="btn bsm" onClick={()=>setCalMonth(new Date())}>Today</button>
+            <button className="btn bsm" onClick={()=>setCalMonth(new Date(year,month+1,1))}>›</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,fontSize:10,marginBottom:4,textAlign:"center",color:t.textMuted,fontFamily:ff,textTransform:"uppercase",letterSpacing:.5}}>
+            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=><div key={d}>{d}</div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+            {cells.map((d,i)=>{
+              if (!d) return <div key={i} style={{aspectRatio:"1",background:"transparent"}}/>;
+              const pl = plannedOnDay(d);
+              const ss = sessionsOnDay(d);
+              const has = pl.length>0 || ss.length>0;
+              const tod = isToday(d);
+              return <button key={i}
+                style={{
+                  aspectRatio:"1",border:`1px solid ${tod?t.accent:t.border}`,
+                  background:has?t.accentBg:t.input,
+                  borderRadius:6,padding:2,cursor:"pointer",
+                  display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",
+                  fontSize:11,color:tod?t.accent:t.text,fontFamily:tod?ff:bf
+                }}
+                onClick={()=>{
+                  setEditItem(null);
+                  setNewPlan({...blankPlan,date:dateKey(d)});
+                  setShowPlanForm(true);
+                }}>
+                <span style={{fontWeight:tod?"bold":"normal"}}>{d}</span>
+                <div style={{display:"flex",gap:1,marginTop:1}}>
+                  {pl.slice(0,3).map((_,j)=><span key={"p"+j} style={{width:4,height:4,borderRadius:"50%",background:t.accent}}/>)}
+                  {ss.slice(0,3).map((_,j)=><span key={"s"+j} style={{width:4,height:4,borderRadius:"50%",background:t.success}}/>)}
+                </div>
+              </button>;
+            })}
+          </div>
+          <div style={{marginTop:8,fontSize:11,color:t.textMuted,display:"flex",gap:12}}>
+            <span><span style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:t.accent,marginRight:4}}/>Planned</span>
+            <span><span style={{display:"inline-block",width:6,height:6,borderRadius:"50%",background:t.success,marginRight:4}}/>Logged</span>
+          </div>
+        </div>
+        <div className="ct" style={{marginTop:14}}><Icon name="bell" size={15}/>Upcoming Shoots</div>
+        {upcoming.length===0 ? <div className="card"><div className="es">No upcoming shoots planned</div></div>
+          : upcoming.map(p=><PlanCard key={p.id} p={p} isPast={false}/>)}
+        {past.length>0 && <div>
+          <div className="ct" style={{marginTop:14,color:t.textMuted}}><Icon name="calendar" size={15}/>Past Plans</div>
+          {past.slice(0,5).map(p=><PlanCard key={p.id} p={p} isPast={true}/>)}
+        </div>}
       </div>
     </div>;
   }
@@ -1132,7 +1363,83 @@ function App() {
     </div>;
   }
 
-  const PAGES = {dashboard:Dashboard,firearms:Firearms,ammo:Ammo,locations:Locations,sessions:Sessions,land:Land,maintenance:Maintenance,stats:Stats,feo:FEO,settings:Settings};
+  function PlanModal() {
+    if(!showPlanForm) return null;
+    const save = () => {
+      if(!newPlan.date) return;
+      if(editItem?._type==="plan") setPlanned(p=>p.map(x=>x.id===editItem.id?{...newPlan,id:editItem.id}:x));
+      else setPlanned(p=>[...p,{...newPlan,id:gid()}]);
+      setShowPlanForm(false); setEditItem(null); setNewPlan(blankPlan);
+    };
+    const toggleFirearm = (id) => setNewPlan(p=>({...p,firearmIds:p.firearmIds?.includes(id)?p.firearmIds.filter(x=>x!==id):[...(p.firearmIds||[]),id]}));
+    const toggleSpecies = (sp) => setNewPlan(p=>({...p,species:p.species?.includes(sp)?p.species.filter(x=>x!==sp):[...(p.species||[]),sp]}));
+    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget){setShowPlanForm(false);setEditItem(null);}}}>
+      <div className="modal">
+        <div className="mt">{editItem?"Edit Planned Shoot":"Plan a Shoot"}<button className="xb" onClick={()=>{setShowPlanForm(false);setEditItem(null);}}>×</button></div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Date *</div><input className="inp" type="date" value={newPlan.date} onChange={e=>setNewPlan(p=>({...p,date:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">Time</div><input className="inp" type="time" value={newPlan.time} onChange={e=>setNewPlan(p=>({...p,time:e.target.value}))}/></div>
+        </div>
+        <div className="fld"><div className="lbl">Purpose</div>
+          <select className="inp" value={newPlan.purpose} onChange={e=>setNewPlan(p=>({...p,purpose:e.target.value}))}>
+            <option value="target">Target Shooting</option><option value="pest">Pest Control</option>
+            <option value="stalking">Deer Stalking</option><option value="rough">Rough Shooting</option>
+            <option value="driven">Driven Game</option><option value="wildfowling">Wildfowling</option>
+            <option value="clay">Clay Shooting</option><option value="zero">Zeroing / Sighting In</option>
+            <option value="practice">Practice / Training</option>
+          </select>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Location</div>
+            <select className="inp" value={newPlan.locationId} onChange={e=>setNewPlan(p=>({...p,locationId:e.target.value}))}>
+              <option value="">Select</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <div className="fld"><div className="lbl">Land (optional)</div>
+            <select className="inp" value={newPlan.landId} onChange={e=>setNewPlan(p=>({...p,landId:e.target.value}))}>
+              <option value="">—</option>{land.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {firearms.length>0 && <div className="fld">
+          <div className="lbl" style={{marginBottom:7}}>Firearms (tap to include)</div>
+          <div className="qg">
+            {firearms.map(f=>(
+              <button key={f.id} className={`qi ${newPlan.firearmIds?.includes(f.id)?"sel":""}`} onClick={()=>toggleFirearm(f.id)}>
+                {f.name} ({f.calibre})
+              </button>
+            ))}
+          </div>
+        </div>}
+        {QUARRY_PURPOSES.includes(newPlan.purpose) && <div>
+          <div className="lbl" style={{marginBottom:7}}>Quarry Species</div>
+          <div className="qg">
+            {UK_QUARRY.map(sp=>(
+              <button key={sp} className={`qi ${newPlan.species?.includes(sp)?"sel":""}`} onClick={()=>toggleSpecies(sp)}>
+                {sp}
+              </button>
+            ))}
+          </div>
+        </div>}
+        <div className="fld"><div className="lbl">Shooting Party / With</div><input className="inp" value={newPlan.party} onChange={e=>setNewPlan(p=>({...p,party:e.target.value}))} placeholder="e.g. John, Dave, gamekeeper"/></div>
+        <div className="fld"><div className="lbl">Recurring</div>
+          <select className="inp" value={newPlan.recurring||"none"} onChange={e=>setNewPlan(p=>({...p,recurring:e.target.value}))}>
+            <option value="none">One-off</option>
+            <option value="weekly">Weekly</option>
+            <option value="fortnightly">Fortnightly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newPlan.notes} onChange={e=>setNewPlan(p=>({...p,notes:e.target.value}))} placeholder="Meet point, gear reminders, dress code..."/></div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>{editItem?"Update":"Save Plan"}</button>
+          <button className="btn" onClick={()=>{setShowPlanForm(false);setEditItem(null);}}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  const PAGES = {dashboard:Dashboard,firearms:Firearms,ammo:Ammo,locations:Locations,sessions:Sessions,planner:Planner,land:Land,maintenance:Maintenance,stats:Stats,feo:FEO,settings:Settings};
 
   return (
     <div className="app">
@@ -1154,6 +1461,7 @@ function App() {
       {AmmoModal()}
       {LandModal()}
       {MaintModal()}
+      {PlanModal()}
     </div>
   );
 }
