@@ -433,7 +433,7 @@ function App() {
   }
 
   function generateFEO() {
-    const rows = sessions.map(s => {
+    const rows = [...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(s => {
       const loc = locations.find(l=>l.id===s.locationId);
       const gun = firearms.find(f=>f.id===s.firearmId);
       const q = Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}: ${v}`).join(", ");
@@ -506,7 +506,7 @@ function App() {
             <div className="ct"><Icon name="target" size={15}/>Recent Sessions</div>
             <button className="btn bsm" onClick={()=>setShowSessionForm(true)}><Icon name="plus" size={13}/>New Session</button>
           </div>
-          {sessions.length===0?<div className="es">No sessions logged yet</div>:sessions.slice(-5).reverse().map(s=>{
+          {sessions.length===0?<div className="es">No sessions logged yet</div>:[...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,5).map(s=>{
             const loc=locations.find(l=>l.id===s.locationId);
             const gun=firearms.find(f=>f.id===s.firearmId);
             const qT=Object.values(s.quarryBag||{}).reduce((a,v)=>a+(parseInt(v)||0),0);
@@ -648,7 +648,7 @@ function App() {
           <div className="ct"><Icon name="paw" size={15}/>All Sessions</div>
           <button className="btn" onClick={()=>{setNewSession(blankSession);setShowSessionForm(true);}}><Icon name="plus" size={13}/>New Session</button>
         </div>
-        {sessions.length===0?<div className="card"><div className="es">No sessions recorded yet</div></div>:[...sessions].reverse().map(s=>{
+        {sessions.length===0?<div className="card"><div className="es">No sessions recorded yet</div></div>:[...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(s=>{
           const loc=locations.find(l=>l.id===s.locationId);
           const gun=firearms.find(f=>f.id===s.firearmId);
           const qe=Object.entries(s.quarryBag||{}).filter(([,v])=>parseInt(v)>0);
@@ -1003,7 +1003,7 @@ function App() {
           {sessions.length===0?<div className="es">No sessions to display</div>:<div style={{overflowX:"auto"}}>
             <table className="ft">
               <thead><tr><th>Date</th><th>Location</th><th>Firearm</th><th>Cal.</th><th>Rds</th><th>Quarry</th></tr></thead>
-              <tbody>{[...sessions].reverse().map(s=>{
+              <tbody>{[...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(s=>{
                 const loc=locations.find(l=>l.id===s.locationId);
                 const gun=firearms.find(f=>f.id===s.firearmId);
                 const q=Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(", ");
