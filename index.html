@@ -160,6 +160,7 @@ function App() {
     {id:"s10", name:"Reloading Solutions", url:"https://www.reloadingsolutions.com", category:"Reloading", location:"UK", notes:"Components & equipment"},
     {id:"s11", name:"Optics Warehouse", url:"https://www.opticswarehouse.co.uk", category:"Optics", location:"UK", notes:"Scopes, rangefinders, NV"},
   ]));
+  const [hiatus, setHiatus] = useState(() => load("sl_hiatus",[]));
   const [feo, setFeo] = useState(() => load("sl_feo",{fac:"",facExpiry:"",sgc:"",sgcExpiry:"",name:"",address:"",feoName:"",feoContact:""}));
   const [alerts, setAlerts] = useState([]);
   const [editItem, setEditItem] = useState(null);
@@ -171,6 +172,7 @@ function App() {
   const [showMaintForm, setShowMaintForm] = useState(false);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [showShopForm, setShowShopForm] = useState(false);
+  const [showHiatusForm, setShowHiatusForm] = useState(false);
   const [calMonth, setCalMonth] = useState(() => { const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [weatherCache, setWeatherCache] = useState({});
 
@@ -181,6 +183,7 @@ function App() {
   const blankMaint = {firearmId:"",date:td(),type:"",parts:"",notes:"",nextDue:""};
   const blankPlan = {date:td(),time:"",locationId:"",landId:"",firearmIds:[],purpose:"target",party:"",species:[],notes:"",recurring:"none"};
   const blankShop = {name:"",url:"",category:"Local",location:"",notes:""};
+  const blankHiatus = {startDate:td(),endDate:td(),reason:"Holiday",notes:""};
 
   const [newFirearm, setNewFirearm] = useState(blankFirearm);
   const [newLocation, setNewLocation] = useState({name:"",type:"",county:"",notes:""});
@@ -190,6 +193,7 @@ function App() {
   const [newMaint, setNewMaint] = useState(blankMaint);
   const [newPlan, setNewPlan] = useState(blankPlan);
   const [newShop, setNewShop] = useState(blankShop);
+  const [newHiatus, setNewHiatus] = useState(blankHiatus);
 
   const t = getTheme(theme);
   const ff = t.mono ? "'Courier New',monospace" : "'Cinzel','Georgia',serif";
@@ -204,6 +208,7 @@ function App() {
   useEffect(()=>{save("sl_maintenance",maintenance);},[maintenance]);
   useEffect(()=>{save("sl_planned",planned);},[planned]);
   useEffect(()=>{save("sl_shops",shops);},[shops]);
+  useEffect(()=>{save("sl_hiatus",hiatus);},[hiatus]);
   useEffect(()=>{save("sl_feo",feo);},[feo]);
 
   useEffect(()=>{
@@ -396,7 +401,7 @@ function App() {
   function exportData() {
     const data = {
       version: 2, exported: new Date().toISOString(),
-      firearms, locations, sessions, ammoStock, land, maintenance, planned, shops, feo, theme
+      firearms, locations, sessions, ammoStock, land, maintenance, planned, shops, hiatus, feo, theme
     };
     const b = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
     const u = URL.createObjectURL(b);
@@ -422,6 +427,7 @@ function App() {
         if(d.maintenance) setMaintenance(d.maintenance);
         if(d.planned) setPlanned(d.planned);
         if(d.shops) setShops(d.shops);
+        if(d.hiatus) setHiatus(d.hiatus);
         if(d.feo) setFeo(d.feo);
         if(d.theme) setTheme(d.theme);
         alert("Backup restored successfully.");
@@ -433,7 +439,15 @@ function App() {
   }
 
   function generateFEO() {
-    const rows = [...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(s => {
+    const rows = [
+      ...sessions.map(s=>({...s,_kind:"session",_sortDate:s.date})),
+      ...hiatus.map(h=>({...h,_kind:"hiatus",_sortDate:h.startDate}))
+    ].sort((a,b)=>(b._sortDate||"").localeCompare(a._sortDate||"")).map(it => {
+      if (it._kind==="hiatus") {
+        const dateRange = it.startDate===it.endDate ? fmt(it.startDate) : `${fmt(it.startDate)} – ${fmt(it.endDate)}`;
+        return `<tr style="background:#f0e8d8;font-style:italic;color:#666"><td>${dateRange}</td><td colspan="6">Non-shooting period — ${it.reason}${it.notes?": "+it.notes:""}</td></tr>`;
+      }
+      const s = it;
       const loc = locations.find(l=>l.id===s.locationId);
       const gun = firearms.find(f=>f.id===s.firearmId);
       const q = Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}: ${v}`).join(", ");
@@ -641,14 +655,43 @@ function App() {
   }
 
   function Sessions() {
+    // Merge sessions and hiatus periods into one timeline, sorted by date desc
+    const items = [
+      ...sessions.map(s=>({...s, _kind:"session", _sortDate:s.date})),
+      ...hiatus.map(h=>({...h, _kind:"hiatus", _sortDate:h.startDate}))
+    ].sort((a,b)=>(b._sortDate||"").localeCompare(a._sortDate||""));
     return <div>
       <div className="hdr"><h1>Sessions</h1><p>Shooting Records &amp; Quarry Bags</p></div>
       <div className="main">
         <div className="sh">
-          <div className="ct"><Icon name="paw" size={15}/>All Sessions</div>
-          <button className="btn" onClick={()=>{setNewSession(blankSession);setShowSessionForm(true);}}><Icon name="plus" size={13}/>New Session</button>
+          <div className="ct"><Icon name="paw" size={15}/>All Activity</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button className="btn bsm" onClick={()=>{setEditItem(null);setNewHiatus(blankHiatus);setShowHiatusForm(true);}}>+ Non-Shooting</button>
+            <button className="btn" onClick={()=>{setNewSession(blankSession);setShowSessionForm(true);}}><Icon name="plus" size={13}/>New Session</button>
+          </div>
         </div>
-        {sessions.length===0?<div className="card"><div className="es">No sessions recorded yet</div></div>:[...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(s=>{
+        {items.length===0?<div className="card"><div className="es">No activity recorded yet</div></div>:items.map(it=>{
+          if (it._kind==="hiatus") {
+            const days = Math.max(1, Math.round((new Date(it.endDate)-new Date(it.startDate))/86400000)+1);
+            return <div key={"h"+it.id} className="card" style={{borderLeft:`4px solid ${t.textMuted}`,background:t.input,opacity:.85}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <h3 style={{fontFamily:ff,fontSize:14,color:t.textMuted}}>Non-Shooting Period</h3>
+                  <p style={{fontSize:13,color:t.text,marginTop:3}}>{fmt(it.startDate)}{it.startDate!==it.endDate?` → ${fmt(it.endDate)}`:""}</p>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:6}}>
+                    <span className="badge">{it.reason}</span>
+                    <span className="badge">{days} day{days===1?"":"s"}</span>
+                  </div>
+                  {it.notes && <p style={{fontSize:12,color:t.textMuted,marginTop:6,fontStyle:"italic"}}>{it.notes}</p>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  <button className="btn bsm" onClick={()=>{setEditItem({...it,_type:"hiatus"});setNewHiatus(it);setShowHiatusForm(true);}}>Edit</button>
+                  <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this non-shooting period?"))setHiatus(hs=>hs.filter(x=>x.id!==it.id));}}><Icon name="trash" size={12}/></button>
+                </div>
+              </div>
+            </div>;
+          }
+          const s=it;
           const loc=locations.find(l=>l.id===s.locationId);
           const gun=firearms.find(f=>f.id===s.firearmId);
           const qe=Object.entries(s.quarryBag||{}).filter(([,v])=>parseInt(v)>0);
@@ -1003,7 +1046,17 @@ function App() {
           {sessions.length===0?<div className="es">No sessions to display</div>:<div style={{overflowX:"auto"}}>
             <table className="ft">
               <thead><tr><th>Date</th><th>Location</th><th>Firearm</th><th>Cal.</th><th>Rds</th><th>Quarry</th></tr></thead>
-              <tbody>{[...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(s=>{
+              <tbody>{[
+                ...sessions.map(s=>({...s,_kind:"session",_sortDate:s.date})),
+                ...hiatus.map(h=>({...h,_kind:"hiatus",_sortDate:h.startDate}))
+              ].sort((a,b)=>(b._sortDate||"").localeCompare(a._sortDate||"")).map(it=>{
+                if (it._kind==="hiatus") {
+                  return <tr key={"h"+it.id} style={{background:t.input}}>
+                    <td>{fmt(it.startDate)}{it.startDate!==it.endDate?` – ${fmt(it.endDate)}`:""}</td>
+                    <td colSpan={5} style={{color:t.textMuted,fontStyle:"italic"}}>Non-shooting period — {it.reason}{it.notes?`: ${it.notes}`:""}</td>
+                  </tr>;
+                }
+                const s=it;
                 const loc=locations.find(l=>l.id===s.locationId);
                 const gun=firearms.find(f=>f.id===s.firearmId);
                 const q=Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(", ");
@@ -1533,6 +1586,52 @@ function App() {
     </div>;
   }
 
+  function HiatusModal() {
+    if(!showHiatusForm) return null;
+    const save = () => {
+      if(!newHiatus.startDate || !newHiatus.endDate) return;
+      if (newHiatus.endDate < newHiatus.startDate) {
+        alert("End date must be on or after start date.");
+        return;
+      }
+      if(editItem?._type==="hiatus") setHiatus(hs=>hs.map(x=>x.id===editItem.id?{...newHiatus,id:editItem.id}:x));
+      else setHiatus(hs=>[...hs,{...newHiatus,id:gid()}]);
+      setShowHiatusForm(false); setEditItem(null); setNewHiatus(blankHiatus);
+    };
+    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget){setShowHiatusForm(false);setEditItem(null);}}}>
+      <div className="modal">
+        <div className="mt">{editItem?"Edit Non-Shooting Period":"Log Non-Shooting Period"}<button className="xb" onClick={()=>{setShowHiatusForm(false);setEditItem(null);}}>×</button></div>
+        <div style={{background:t.accentBg,border:`1px solid ${t.accent}44`,borderRadius:8,padding:9,marginBottom:11,fontSize:12,color:t.textMuted,lineHeight:1.4}}>
+          Logging periods you didn't shoot gives your FEO a complete picture and explains gaps in your activity record.
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Start Date *</div><input className="inp" type="date" value={newHiatus.startDate} onChange={e=>setNewHiatus(h=>({...h,startDate:e.target.value}))}/></div>
+          <div className="fld"><div className="lbl">End Date *</div><input className="inp" type="date" value={newHiatus.endDate} onChange={e=>setNewHiatus(h=>({...h,endDate:e.target.value}))}/></div>
+        </div>
+        <div className="fld"><div className="lbl">Reason</div>
+          <select className="inp" value={newHiatus.reason} onChange={e=>setNewHiatus(h=>({...h,reason:e.target.value}))}>
+            <option>Holiday</option>
+            <option>Illness</option>
+            <option>Injury</option>
+            <option>Work Commitments</option>
+            <option>Out of Season</option>
+            <option>Firearm at Gunsmith</option>
+            <option>Weather</option>
+            <option>Family / Personal</option>
+            <option>Bereavement</option>
+            <option>Awaiting Certificate</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newHiatus.notes} onChange={e=>setNewHiatus(h=>({...h,notes:e.target.value}))} placeholder="Optional detail (e.g. broken collarbone, summer holiday in Italy)"/></div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="btn bsl" onClick={save}>{editItem?"Update":"Save"}</button>
+          <button className="btn" onClick={()=>{setShowHiatusForm(false);setEditItem(null);}}>Cancel</button>
+        </div>
+      </div>
+    </div>;
+  }
+
   const PAGES = {dashboard:Dashboard,firearms:Firearms,ammo:Ammo,locations:Locations,sessions:Sessions,planner:Planner,land:Land,maintenance:Maintenance,shops:Shops,stats:Stats,feo:FEO,settings:Settings};
 
   return (
@@ -1557,6 +1656,7 @@ function App() {
       {MaintModal()}
       {PlanModal()}
       {ShopModal()}
+      {HiatusModal()}
     </div>
   );
 }
