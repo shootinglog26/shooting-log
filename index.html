@@ -177,7 +177,7 @@ function App() {
   const [weatherCache, setWeatherCache] = useState({});
 
   const blankFirearm = {name:"",type:"",action:"",calibre:"",serial:"",manufacturer:"",notes:"",photo:null};
-  const blankSession = {date:td(),locationId:"",firearmId:"",ammoId:"",rounds:0,weather:"",wind:"",windSpeed:"",temp:"",quarryBag:{},notes:"",targetPhotos:[],distance:"",purpose:"target"};
+  const blankSession = {date:td(),locationId:"",firearmIds:[],ammoId:"",rounds:0,weather:"",wind:"",windSpeed:"",temp:"",quarryBag:{},notes:"",targetPhotos:[],distance:"",purpose:"target"};
   const blankAmmo = {calibre:"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""};
   const blankLand = {name:"",acres:"",county:"",owner:"",contact:"",permission:td(),notes:"",species:[]};
   const blankMaint = {firearmId:"",date:td(),type:"",parts:"",notes:"",nextDue:""};
@@ -295,6 +295,16 @@ function App() {
     if(deg==null) return "";
     const dirs=["N","NE","E","SE","S","SW","W","NW"];
     return dirs[Math.round(deg/45)%8];
+  }
+
+  // Get firearm IDs from a session, handling both new (firearmIds array) and legacy (firearmId string)
+  function sessionFirearmIds(s) {
+    if (Array.isArray(s.firearmIds) && s.firearmIds.length) return s.firearmIds;
+    if (s.firearmId) return [s.firearmId];
+    return [];
+  }
+  function sessionFirearms(s) {
+    return sessionFirearmIds(s).map(id => firearms.find(f=>f.id===id)).filter(Boolean);
   }
 
   function readImg(file,cb){
@@ -449,9 +459,11 @@ function App() {
       }
       const s = it;
       const loc = locations.find(l=>l.id===s.locationId);
-      const gun = firearms.find(f=>f.id===s.firearmId);
+      const guns = sessionFirearms(s);
+      const gunNames = guns.length?guns.map(g=>g.name).join(", "):"—";
+      const cals = guns.length?[...new Set(guns.map(g=>g.calibre))].join(", "):"—";
       const q = Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}: ${v}`).join(", ");
-      return `<tr><td>${fmt(s.date)}</td><td>${loc?.name||"—"}</td><td>${gun?.name||"—"}</td><td>${gun?.calibre||"—"}</td><td>${s.rounds}</td><td>${q||"—"}</td><td>${s.notes||"—"}</td></tr>`;
+      return `<tr><td>${fmt(s.date)}</td><td>${loc?.name||"—"}</td><td>${gunNames}</td><td>${cals}</td><td>${s.rounds}</td><td>${q||"—"}</td><td>${s.notes||"—"}</td></tr>`;
     }).join("");
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Shooting Record</title>
     <style>body{font-family:Georgia,serif;margin:40px;color:#1a1a1a}h1{color:#5a3a1a;border-bottom:2px solid #8B4513;padding-bottom:10px}
@@ -522,12 +534,13 @@ function App() {
           </div>
           {sessions.length===0?<div className="es">No sessions logged yet</div>:[...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,5).map(s=>{
             const loc=locations.find(l=>l.id===s.locationId);
-            const gun=firearms.find(f=>f.id===s.firearmId);
+            const guns=sessionFirearms(s);
+            const gunNames=guns.length?guns.map(g=>g.name).join(", "):"—";
             const qT=Object.values(s.quarryBag||{}).reduce((a,v)=>a+(parseInt(v)||0),0);
             return <div key={s.id} className="li">
               <div>
                 <h3>{fmt(s.date)}</h3>
-                <p>{loc?.name||"Unknown"} · {gun?.name||"—"} · {s.rounds} rds</p>
+                <p>{loc?.name||"Unknown"} · {gunNames} · {s.rounds} rds</p>
                 {qT>0&&<p style={{marginTop:4}}><span className="badge">🎯 {qT} quarry</span></p>}
                 {s.weather&&<p style={{marginTop:3,fontSize:11}}>☁ {s.weather}{s.wind?` · ${s.wind}`:""}{s.temp?` · ${s.temp}°C`:""}</p>}
               </div>
@@ -580,7 +593,11 @@ function App() {
               {f.serial&&<p style={{fontSize:11,color:t.textMuted,marginTop:3}}>S/N: {f.serial}</p>}
               {f.notes&&<p style={{fontSize:12,color:t.textMuted,marginTop:3}}>{f.notes}</p>}
               <p style={{fontSize:11,color:t.textMuted,marginTop:5}}>
-                Sessions: {sessions.filter(s=>s.firearmId===f.id).length} · Rounds: {sessions.filter(s=>s.firearmId===f.id).reduce((a,s)=>a+(parseInt(s.rounds)||0),0).toLocaleString()}
+                Sessions: {sessions.filter(s=>sessionFirearmIds(s).includes(f.id)).length} · Rounds: {sessions.filter(s=>sessionFirearmIds(s).includes(f.id)).reduce((a,s)=>{
+                  const ids=sessionFirearmIds(s);
+                  // split rounds across firearms in that session
+                  return a + Math.round((parseInt(s.rounds)||0) / (ids.length||1));
+                },0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -598,7 +615,10 @@ function App() {
           <button className="btn" onClick={()=>{setNewAmmo(blankAmmo);setShowAmmoForm(true);}}><Icon name="plus" size={13}/>Add Stock</button>
         </div>
         {ammoStock.length===0?<div className="card"><div className="es">No ammunition tracked</div></div>:ammoStock.map(a=>{
-          const used=sessions.reduce((acc,s)=>{const g=firearms.find(f=>f.id===s.firearmId);return g?.calibre===a.calibre?acc+(parseInt(s.rounds)||0):acc;},0);
+          const used=sessions.reduce((acc,s)=>{
+            const guns=sessionFirearms(s);
+            return guns.some(g=>g.calibre===a.calibre)?acc+(parseInt(s.rounds)||0):acc;
+          },0);
           return <div key={a.id} className="card">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
               <div>
@@ -693,15 +713,18 @@ function App() {
           }
           const s=it;
           const loc=locations.find(l=>l.id===s.locationId);
-          const gun=firearms.find(f=>f.id===s.firearmId);
+          const guns=sessionFirearms(s);
           const qe=Object.entries(s.quarryBag||{}).filter(([,v])=>parseInt(v)>0);
           const ammoBatch=ammoStock.find(a=>a.id===s.ammoId);
           return <div key={s.id} className="card">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div>
+              <div style={{flex:1,minWidth:0}}>
                 <h3 style={{fontFamily:ff,fontSize:14}}>{fmt(s.date)}</h3>
-                <p style={{fontSize:13,color:t.textMuted,marginTop:2}}>{loc?.name||"—"} · {gun?.name||"—"} ({gun?.calibre||"—"})</p>
-                {ammoBatch&&<p style={{fontSize:11,color:t.textMuted,marginTop:2}}>Ammo: {ammoBatch.brand||"Unbranded"}{ammoBatch.weight?` ${ammoBatch.weight}gr`:""}{ammoBatch.type?` ${ammoBatch.type}`:""}</p>}
+                <p style={{fontSize:13,color:t.textMuted,marginTop:2}}>{loc?.name||"—"}</p>
+                {guns.length>0 && <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5}}>
+                  {guns.map(g=><span key={g.id} className="badge">{g.name} ({g.calibre})</span>)}
+                </div>}
+                {ammoBatch&&<p style={{fontSize:11,color:t.textMuted,marginTop:5}}>Ammo: {ammoBatch.brand||"Unbranded"}{ammoBatch.weight?` ${ammoBatch.weight}gr`:""}{ammoBatch.type?` ${ammoBatch.type}`:""}</p>}
                 {s.purpose&&<div style={{marginTop:5}}><span className="badge" style={{borderColor:t.accent,color:t.accent}}>{({target:"Target",pest:"Pest Control",stalking:"Stalking",rough:"Rough",driven:"Driven Game",wildfowling:"Wildfowling",clay:"Clay",zero:"Zeroing",practice:"Practice"})[s.purpose]||s.purpose}</span></div>}
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
@@ -723,7 +746,12 @@ function App() {
               {s.targetPhotos.map((p,i)=><img key={i} src={p} alt="" style={{height:76,width:76,objectFit:"cover",borderRadius:8,border:`1px solid ${t.border}`,flexShrink:0}}/>)}
             </div>}
             <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
-              <button className="btn bsm" onClick={()=>{const {id,...rest}=s;setNewSession({...rest,date:td(),targetPhotos:[],notes:""});setShowSessionForm(true);}}>Duplicate</button>
+              <button className="btn bsm" onClick={()=>{
+                const {id,firearmId,...rest}=s;
+                const ids = Array.isArray(rest.firearmIds) && rest.firearmIds.length ? rest.firearmIds : (firearmId?[firearmId]:[]);
+                setNewSession({...rest,firearmIds:ids,date:td(),targetPhotos:[],notes:""});
+                setShowSessionForm(true);
+              }}>Duplicate</button>
               <button className="btn bsm bdg" onClick={()=>{if(confirm("Delete this session?"))setSessions(ss=>ss.filter(x=>x.id!==s.id));}}><Icon name="trash" size={12}/> Delete</button>
             </div>
           </div>;
@@ -808,7 +836,7 @@ function App() {
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {!isPast && <button className="btn bsm" onClick={()=>{
-              setNewSession({...blankSession,date:p.date,locationId:p.locationId,firearmId:p.firearmIds?.[0]||"",purpose:p.purpose,notes:p.notes||""});
+              setNewSession({...blankSession,date:p.date,locationId:p.locationId,firearmIds:p.firearmIds||[],purpose:p.purpose,notes:p.notes||""});
               setShowSessionForm(true);
             }}>Log Session</button>}
             <button className="btn bsm" onClick={()=>{setEditItem({...p,_type:"plan"});setNewPlan(p);setShowPlanForm(true);}}>Edit</button>
@@ -1058,9 +1086,11 @@ function App() {
                 }
                 const s=it;
                 const loc=locations.find(l=>l.id===s.locationId);
-                const gun=firearms.find(f=>f.id===s.firearmId);
+                const guns=sessionFirearms(s);
+                const gunNames=guns.length?guns.map(g=>g.name).join(", "):"—";
+                const cals=guns.length?[...new Set(guns.map(g=>g.calibre))].join(", "):"—";
                 const q=Object.entries(s.quarryBag||{}).filter(([,v])=>v>0).map(([k,v])=>`${k}:${v}`).join(", ");
-                return <tr key={s.id}><td>{fmt(s.date)}</td><td>{loc?.name||"—"}</td><td>{gun?.name||"—"}</td><td>{gun?.calibre||"—"}</td><td>{s.rounds}</td><td>{q||"—"}</td></tr>;
+                return <tr key={s.id}><td>{fmt(s.date)}</td><td>{loc?.name||"—"}</td><td>{gunNames}</td><td>{cals}</td><td>{s.rounds}</td><td>{q||"—"}</td></tr>;
               })}</tbody>
             </table>
           </div>}
@@ -1210,17 +1240,16 @@ function App() {
     const save = () => {
       const s={...newSession,id:gid()};
       setSessions(ss=>[...ss,s]);
-      const gun=firearms.find(f=>f.id===newSession.firearmId);
+      const chosenCals = (newSession.firearmIds||[]).map(id=>firearms.find(f=>f.id===id)?.calibre).filter(Boolean);
       if(newSession.rounds>0){
         if(newSession.ammoId){
-          // deduct from the specific selected batch
           setAmmoStock(a=>a.map(x=>x.id===newSession.ammoId?{...x,qty:Math.max(0,x.qty-newSession.rounds)}:x));
-        } else if(gun){
-          // fallback: deduct from first matching calibre batch with stock
+        } else if(chosenCals.length){
+          // Fallback: draw rounds down from any matching-calibre batches
           setAmmoStock(a=>{
             let rem=newSession.rounds;
             return a.map(x=>{
-              if(rem>0&&x.calibre===gun.calibre&&x.qty>0){
+              if(rem>0&&chosenCals.includes(x.calibre)&&x.qty>0){
                 const take=Math.min(x.qty,rem); rem-=take; return {...x,qty:x.qty-take};
               }
               return x;
@@ -1257,30 +1286,48 @@ function App() {
           </div>
           <div className="fld">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <div className="lbl" style={{marginBottom:0}}>Firearm</div>
+              <div className="lbl" style={{marginBottom:0}}>Firearms (tap to include — multiple allowed)</div>
               <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} onClick={()=>{setEditItem(null);setNewFirearm(blankFirearm);setShowFirearmForm(true);}}>+ New</button>
             </div>
-            <select className="inp" value={newSession.firearmId} onChange={e=>setNewSession(s=>({...s,firearmId:e.target.value,ammoId:""}))}>
-              <option value="">Select</option>{firearms.map(f=><option key={f.id} value={f.id}>{f.name} ({f.calibre})</option>)}
-            </select>
+            {firearms.length===0
+              ?<p style={{fontSize:12,color:t.textMuted,fontStyle:"italic"}}>No firearms added yet — tap + New</p>
+              :<div className="qg">
+                {firearms.map(f=>{
+                  const sel = (newSession.firearmIds||[]).includes(f.id);
+                  return <button key={f.id} className={`qi ${sel?"sel":""}`}
+                    onClick={()=>setNewSession(s=>{
+                      const ids = s.firearmIds||[];
+                      const next = ids.includes(f.id) ? ids.filter(x=>x!==f.id) : [...ids,f.id];
+                      // Reset ammo selection if it no longer matches any chosen firearm's calibre
+                      const chosenCalibres = next.map(id=>firearms.find(g=>g.id===id)?.calibre).filter(Boolean);
+                      const ammoStillValid = !s.ammoId || chosenCalibres.includes(ammoStock.find(a=>a.id===s.ammoId)?.calibre);
+                      return {...s, firearmIds: next, ammoId: ammoStillValid ? s.ammoId : ""};
+                    })}>
+                    {f.name} ({f.calibre}){sel && <strong> ✓</strong>}
+                  </button>;
+                })}
+              </div>
+            }
           </div>
         </div>
         {(()=>{
-          const gun=firearms.find(f=>f.id===newSession.firearmId);
-          const matching=gun?ammoStock.filter(a=>a.calibre===gun.calibre):[];
+          const chosen = (newSession.firearmIds||[]).map(id=>firearms.find(f=>f.id===id)).filter(Boolean);
+          const cals = [...new Set(chosen.map(f=>f.calibre))];
+          const matching = chosen.length ? ammoStock.filter(a=>cals.includes(a.calibre)) : [];
+          const calLabel = cals.length===1 ? `(${cals[0]})` : cals.length>1 ? `(${cals.join(", ")})` : "";
           return <div className="fld">
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-              <div className="lbl" style={{marginBottom:0}}>Ammo Used {gun?`(${gun.calibre})`:""}</div>
-              <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} disabled={!gun}
+              <div className="lbl" style={{marginBottom:0}}>Ammo Used {calLabel}</div>
+              <button className="btn bsm" style={{padding:"2px 8px",fontSize:11}} disabled={!chosen.length}
                 onClick={()=>{
                   setEditItem(null);
-                  setNewAmmo({calibre:gun?.calibre||"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""});
+                  setNewAmmo({calibre:cals[0]||"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""});
                   setShowAmmoForm(true);
                 }}>+ Add Stock</button>
             </div>
-            <select className="inp" value={newSession.ammoId} onChange={e=>setNewSession(s=>({...s,ammoId:e.target.value}))} disabled={!gun}>
-              <option value="">{!gun?"Select firearm first":matching.length?"Select ammo batch":"No matching ammo in stock"}</option>
-              {matching.map(a=><option key={a.id} value={a.id}>{a.brand||"Unbranded"}{a.weight?` ${a.weight}gr`:""}{a.type?` ${a.type}`:""} — {a.qty} rds left</option>)}
+            <select className="inp" value={newSession.ammoId} onChange={e=>setNewSession(s=>({...s,ammoId:e.target.value}))} disabled={!chosen.length}>
+              <option value="">{!chosen.length?"Select firearm(s) first":matching.length?"Select ammo batch":"No matching ammo in stock"}</option>
+              {matching.map(a=><option key={a.id} value={a.id}>{a.calibre} · {a.brand||"Unbranded"}{a.weight?` ${a.weight}gr`:""}{a.type?` ${a.type}`:""} — {a.qty} rds left</option>)}
             </select>
           </div>;
         })()}
