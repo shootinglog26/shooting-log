@@ -96,6 +96,7 @@ const ICONS = {
   bell: "M18 16v-5a6 6 0 10-12 0v5l-2 2h16l-2-2zM10 21a2 2 0 004 0",
   shop: "M3 9l1-5h16l1 5M3 9v11a1 1 0 001 1h16a1 1 0 001-1V9M3 9h18M9 21v-7h6v7",
   link: "M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1",
+  calc: "M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2zm2 4v3h8V6H8zm0 6h2v2H8v-2zm4 0h2v2h-2v-2zm4 0h2v6h-2v-6zm-8 4h2v2H8v-2zm4 0h2v2h-2v-2z",
   settings: "M12 15a3 3 0 100-6 3 3 0 000 6zm7.07-4.27l1.42-1.1a1 1 0 00.22-1.27l-1.5-2.6a1 1 0 00-1.22-.44l-1.67.67a6.6 6.6 0 00-1.54-.9l-.25-1.78A1 1 0 0013.35 3h-3a1 1 0 00-.99.86l-.25 1.78a6.6 6.6 0 00-1.54.9L5.9 5.87a1 1 0 00-1.22.44l-1.5 2.6a1 1 0 00.22 1.27l1.42 1.1a6.9 6.9 0 000 1.44l-1.42 1.1a1 1 0 00-.22 1.27l1.5 2.6a1 1 0 001.22.44l1.67-.67c.48.34 1 .62 1.54.9l.25 1.78A1 1 0 0010.35 21h3a1 1 0 00.99-.86l.25-1.78a6.6 6.6 0 001.54-.9l1.67.67a1 1 0 001.22-.44l1.5-2.6a1 1 0 00-.22-1.27l-1.42-1.1c.04-.48.04-.96 0-1.44z",
   land: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z",
   plus: "M12 5v14M5 12h14",
@@ -176,9 +177,9 @@ function App() {
   const [calMonth, setCalMonth] = useState(() => { const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [weatherCache, setWeatherCache] = useState({});
 
-  const blankFirearm = {name:"",type:"",action:"",calibre:"",serial:"",manufacturer:"",notes:"",photo:null};
+  const blankFirearm = {name:"",type:"",action:"",calibre:"",serial:"",manufacturer:"",notes:"",photo:null,scopeClick:"0.25moa",sightHeight:"1.5",zeroDistance:"100",zeroUnit:"m"};
   const blankSession = {date:td(),locationId:"",firearmIds:[],ammoId:"",rounds:0,weather:"",wind:"",windSpeed:"",temp:"",quarryBag:{},notes:"",targetPhotos:[],distance:"",purpose:"target"};
-  const blankAmmo = {calibre:"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:""};
+  const blankAmmo = {calibre:"",qty:0,brand:"",type:"",weight:"",lot:"",purchased:td(),notes:"",muzzleVelocity:"",bc:""};
   const blankLand = {name:"",acres:"",county:"",owner:"",contact:"",permission:td(),notes:"",species:[]};
   const blankMaint = {firearmId:"",date:td(),type:"",parts:"",notes:"",nextDue:""};
   const blankPlan = {date:td(),time:"",locationId:"",landId:"",firearmIds:[],purpose:"target",party:"",species:[],notes:"",recurring:"none"};
@@ -194,6 +195,20 @@ function App() {
   const [newPlan, setNewPlan] = useState(blankPlan);
   const [newShop, setNewShop] = useState(blankShop);
   const [newHiatus, setNewHiatus] = useState(blankHiatus);
+
+  // Calculator state (lifted here so hooks work correctly)
+  const [calcTab, setCalcTab] = useState("adjust");
+  const [calcFirearmId, setCalcFirearmId] = useState("");
+  const [calcAmmoId, setCalcAmmoId] = useState("");
+  const [calcAdjMiss, setCalcAdjMiss] = useState("");
+  const [calcAdjDist, setCalcAdjDist] = useState("100");
+  const [calcAdjMissUnit, setCalcAdjMissUnit] = useState("in");
+  const [calcAdjDistUnit, setCalcAdjDistUnit] = useState("m");
+  const [calcZHigh, setCalcZHigh] = useState("");
+  const [calcZRight, setCalcZRight] = useState("");
+  const [calcZDist, setCalcZDist] = useState("100");
+  const [calcZUnit, setCalcZUnit] = useState("in");
+  const [calcZDistUnit, setCalcZDistUnit] = useState("m");
 
   const t = getTheme(theme);
   const ff = t.mono ? "'Courier New',monospace" : "'Cinzel','Georgia',serif";
@@ -501,6 +516,7 @@ function App() {
     {id:"maintenance",icon:"wrench",label:"Maint."},
     {id:"shops",icon:"shop",label:"Shops"},
     {id:"stats",icon:"chart",label:"Stats"},
+    {id:"calc",icon:"calc",label:"Calc"},
     {id:"feo",icon:"police",label:"FEO"},
     {id:"settings",icon:"settings",label:"Settings"},
   ];
@@ -1049,6 +1065,308 @@ function App() {
     </div>;
   }
 
+  function Calculator() {
+    const tab = calcTab, setTab = setCalcTab;
+    const selFirearmId = calcFirearmId, setSelFirearmId = setCalcFirearmId;
+    const selAmmoId = calcAmmoId, setSelAmmoId = setCalcAmmoId;
+    const selFirearm = firearms.find(f=>f.id===selFirearmId);
+    const selAmmo = ammoStock.find(a=>a.id===selAmmoId);
+    const ammoForFirearm = selFirearm ? ammoStock.filter(a=>a.calibre===selFirearm.calibre) : [];
+
+    const adjMiss = calcAdjMiss, setAdjMiss = setCalcAdjMiss;
+    const adjDist = calcAdjDist, setAdjDist = setCalcAdjDist;
+    const adjMissUnit = calcAdjMissUnit, setAdjMissUnit = setCalcAdjMissUnit;
+    const adjDistUnit = calcAdjDistUnit, setAdjDistUnit = setCalcAdjDistUnit;
+
+    function calcAdjust() {
+      const miss = parseFloat(adjMiss);
+      const dist = parseFloat(adjDist);
+      if (!miss || !dist) return null;
+      // Normalise distance to yards for MOA, metres for MIL
+      const distYards = adjDistUnit==="y" ? dist : dist * 1.0936;
+      const distMetres = adjDistUnit==="m" ? dist : dist / 1.0936;
+      // Normalise miss to inches for MOA, cm for MIL
+      const missInches = adjMissUnit==="in" ? miss : miss / 2.54;
+      const missCm = adjMissUnit==="cm" ? miss : miss * 2.54;
+      // 1 MOA = 1.047" @ 100yd (approx 1" per 100yd)
+      const moa = missInches / (distYards / 100) / 1.047;
+      // 1 MIL = 10cm @ 100m
+      const mil = missCm / (distMetres / 100) / 10;
+      // Clicks based on scope setting
+      const click = selFirearm?.scopeClick || "0.25moa";
+      let clicks = 0, clickUnit = "MOA";
+      if (click.endsWith("moa")) {
+        const v = parseFloat(click); clicks = moa / v; clickUnit = "MOA";
+      } else {
+        const v = parseFloat(click); clicks = mil / v; clickUnit = "MIL";
+      }
+      return {moa, mil, clicks, clickUnit, click};
+    }
+    const adj = calcAdjust();
+
+    // ---- Tab 2: Drop Chart (simplified ballistic model) ----
+    // Uses a basic point-mass approximation with G1 drag and zero offset.
+    // Not match-grade but plenty good for field use.
+    function dropAtDistance(targetDist_m) {
+      if (!selFirearm || !selAmmo) return null;
+      const mv = parseFloat(selAmmo.muzzleVelocity);
+      const bc = parseFloat(selAmmo.bc);
+      const sh = parseFloat(selFirearm.sightHeight) || 1.5; // inches
+      const zeroDist = parseFloat(selFirearm.zeroDistance) || 100;
+      const zeroDist_m = selFirearm.zeroUnit==="y" ? zeroDist * 0.9144 : zeroDist;
+      if (!mv || !bc) return null;
+
+      // Convert: muzzle vel fps to m/s
+      const v0 = mv * 0.3048;
+      // Simplified G1 drag: time-of-flight with retarded velocity
+      // Drag deceleration approximated as: a = -k * v^2 / (BC * mass scaling)
+      // We'll use a known empirical formula for time of flight at range x:
+      // t(x) ≈ x / (v0 * (1 - x / (2 * bc * 8000)))  (rough)
+      // Better: iterate in small steps with drag.
+      const stepSize = 1; // 1m steps
+      let v = v0;
+      let t = 0;
+      let dropM = 0;
+      let dist = 0;
+      const g = 9.81;
+      const k = 0.5 / bc; // empirical drag constant
+      while (dist < targetDist_m) {
+        const dt = stepSize / v;
+        v = v - k * v * v * dt / 8000; // light drag effect
+        if (v < 100) break;
+        dropM += 0.5 * g * dt * dt + (dropM > 0 ? (g * dt) : 0); // accumulate drop
+        t += dt;
+        dist += stepSize;
+      }
+      // Better integration: pure freefall during ToF
+      t = 0; v = v0; dist = 0;
+      while (dist < targetDist_m) {
+        const dt = stepSize / v;
+        v = v - k * v * v * dt / 8000;
+        if (v < 50) break;
+        t += dt;
+        dist += stepSize;
+      }
+      const dropAtTarget_m = 0.5 * g * t * t; // freefall drop in metres
+      const dropAtTarget_in = dropAtTarget_m * 39.3701;
+      const sightHeight_m = sh * 0.0254;
+
+      // Drop at zero distance
+      let tZero = 0, vZ = v0, dZ = 0;
+      while (dZ < zeroDist_m) {
+        const dt = stepSize / vZ;
+        vZ = vZ - k * vZ * vZ * dt / 8000;
+        if (vZ < 50) break;
+        tZero += dt; dZ += stepSize;
+      }
+      const dropAtZero_m = 0.5 * g * tZero * tZero;
+
+      // The bullet path relative to line of sight:
+      // At zero, bullet is on line of sight (relative drop is zero).
+      // The barrel is angled up by (dropAtZero + sightHeight) / zeroDist
+      const launchAngle = (dropAtZero_m + sightHeight_m) / zeroDist_m;
+      // Bullet path at target = launchAngle * dist - dropAtTarget - sightHeight
+      const poi_m = launchAngle * targetDist_m - dropAtTarget_m - sightHeight_m;
+      // Positive = above line of sight; negative = below (drop)
+      const poi_in = poi_m * 39.3701;
+      const poi_cm = poi_m * 100;
+
+      // MOA / MIL needed to correct
+      const dist_yd = targetDist_m * 1.0936;
+      const moa = -poi_in / (dist_yd / 100) / 1.047;
+      const mil = -poi_cm / (targetDist_m / 100) / 10;
+
+      return {dist_m: targetDist_m, poi_in, poi_cm, moa, mil};
+    }
+
+    // ---- Tab 3: Zero adjustment from current grouping ----
+    const zHigh = calcZHigh, setZHigh = setCalcZHigh;
+    const zRight = calcZRight, setZRight = setCalcZRight;
+    const zDist = calcZDist, setZDist = setCalcZDist;
+    const zUnit = calcZUnit, setZUnit = setCalcZUnit;
+    const zDistUnit = calcZDistUnit, setZDistUnit = setCalcZDistUnit;
+    function calcZero() {
+      const h = parseFloat(zHigh) || 0;
+      const r = parseFloat(zRight) || 0;
+      const d = parseFloat(zDist);
+      if (!d || (!h && !r)) return null;
+      const distYd = zDistUnit==="y" ? d : d * 1.0936;
+      const distM = zDistUnit==="m" ? d : d / 1.0936;
+      const hIn = zUnit==="in" ? h : h / 2.54;
+      const rIn = zUnit==="in" ? r : r / 2.54;
+      const hCm = zUnit==="cm" ? h : h * 2.54;
+      const rCm = zUnit==="cm" ? r : r * 2.54;
+      const vertMoa = -hIn / (distYd / 100) / 1.047;
+      const horzMoa = -rIn / (distYd / 100) / 1.047;
+      const vertMil = -hCm / (distM / 100) / 10;
+      const horzMil = -rCm / (distM / 100) / 10;
+      const click = selFirearm?.scopeClick || "0.25moa";
+      let vClicks=0, hClicks=0, unit="MOA";
+      if (click.endsWith("moa")) {
+        const v = parseFloat(click); vClicks = vertMoa / v; hClicks = horzMoa / v; unit="MOA";
+      } else {
+        const v = parseFloat(click); vClicks = vertMil / v; hClicks = horzMil / v; unit="MIL";
+      }
+      return {vertMoa, horzMoa, vertMil, horzMil, vClicks, hClicks, unit};
+    }
+    const zero = calcZero();
+
+    return <div>
+      <div className="hdr"><h1>Ballistic Calculator</h1><p>MOA / MIL Adjustments &amp; Drop Estimation</p></div>
+      <div className="main">
+        <div className="card" style={{padding:6,display:"flex",gap:4}}>
+          {[["adjust","Adjust"],["drop","Drop Chart"],["zero","Zero Correction"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setTab(id)}
+              style={{flex:1,padding:9,border:`1px solid ${tab===id?t.accent:"transparent"}`,background:tab===id?t.accentBg:"transparent",color:tab===id?t.accent:t.textMuted,borderRadius:8,fontSize:12,fontFamily:ff,cursor:"pointer",textTransform:"uppercase",letterSpacing:.5}}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab==="adjust" && <div className="card">
+          <div className="ct"><Icon name="target" size={15}/>Miss Correction</div>
+          <p style={{fontSize:12,color:t.textMuted,marginBottom:10}}>You missed by how much, at what distance? Get exact MOA/MIL correction.</p>
+          <div className="row">
+            <div className="fld"><div className="lbl">Miss Amount</div><input className="inp" type="number" step="0.1" value={adjMiss} onChange={e=>setAdjMiss(e.target.value)} placeholder="e.g. 3"/></div>
+            <div className="fld"><div className="lbl">Unit</div>
+              <select className="inp" value={adjMissUnit} onChange={e=>setAdjMissUnit(e.target.value)}>
+                <option value="in">Inches</option><option value="cm">Centimetres</option>
+              </select>
+            </div>
+          </div>
+          <div className="row">
+            <div className="fld"><div className="lbl">Distance</div><input className="inp" type="number" value={adjDist} onChange={e=>setAdjDist(e.target.value)}/></div>
+            <div className="fld"><div className="lbl">Unit</div>
+              <select className="inp" value={adjDistUnit} onChange={e=>setAdjDistUnit(e.target.value)}>
+                <option value="m">Metres</option><option value="y">Yards</option>
+              </select>
+            </div>
+          </div>
+          {firearms.length>0 && <div className="fld"><div className="lbl">Rifle (for click value)</div>
+            <select className="inp" value={selFirearmId} onChange={e=>setSelFirearmId(e.target.value)}>
+              <option value="">— Generic ¼ MOA —</option>
+              {firearms.map(f=><option key={f.id} value={f.id}>{f.name} — {f.scopeClick||"¼ MOA"}</option>)}
+            </select>
+          </div>}
+          {adj && <div className="card" style={{background:t.accentBg,marginTop:10,marginBottom:0}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div><div className="lbl">MOA Correction</div><div style={{fontFamily:ff,fontSize:22,color:t.accent}}>{adj.moa.toFixed(2)}</div></div>
+              <div><div className="lbl">MIL Correction</div><div style={{fontFamily:ff,fontSize:22,color:t.accent}}>{adj.mil.toFixed(2)}</div></div>
+            </div>
+            <hr className="dvd"/>
+            <div style={{textAlign:"center"}}>
+              <div className="lbl">Clicks to dial</div>
+              <div style={{fontFamily:ff,fontSize:28,color:t.accent,margin:"6px 0"}}>{Math.round(adj.clicks)} clicks</div>
+              <div style={{fontSize:11,color:t.textMuted}}>at {selFirearm?.scopeClick||"¼ MOA"} per click</div>
+            </div>
+          </div>}
+        </div>}
+
+        {tab==="drop" && <div className="card">
+          <div className="ct"><Icon name="chart" size={15}/>Drop Chart</div>
+          {firearms.length===0 ? <div className="es">Add a firearm first (Firearms tab)</div>
+            : <div>
+              <div className="fld"><div className="lbl">Rifle</div>
+                <select className="inp" value={selFirearmId} onChange={e=>{setSelFirearmId(e.target.value);setSelAmmoId("");}}>
+                  <option value="">Select rifle</option>
+                  {firearms.map(f=><option key={f.id} value={f.id}>{f.name} ({f.calibre})</option>)}
+                </select>
+              </div>
+              {selFirearm && <div className="fld"><div className="lbl">Ammunition ({selFirearm.calibre})</div>
+                <select className="inp" value={selAmmoId} onChange={e=>setSelAmmoId(e.target.value)}>
+                  <option value="">{ammoForFirearm.length?"Select ammo batch":"No matching ammo in stock"}</option>
+                  {ammoForFirearm.map(a=><option key={a.id} value={a.id}>{a.brand||"Unbranded"}{a.weight?` ${a.weight}gr`:""}{a.type?` ${a.type}`:""}</option>)}
+                </select>
+              </div>}
+              {selFirearm && selAmmo && (!selAmmo.muzzleVelocity || !selAmmo.bc) && 
+                <div style={{background:t.danger+"22",border:`1px solid ${t.danger}`,borderRadius:8,padding:9,fontSize:12,color:t.danger}}>
+                  Edit this ammo batch (Ammo tab) to add Muzzle Velocity and Ballistic Coefficient.
+                </div>}
+              {selFirearm && selAmmo && selAmmo.muzzleVelocity && selAmmo.bc && <div>
+                <p style={{fontSize:11,color:t.textMuted,marginBottom:8}}>
+                  {selFirearm.name} zeroed at {selFirearm.zeroDistance}{selFirearm.zeroUnit} · {selAmmo.brand||"Unbranded"}{selAmmo.weight?` ${selAmmo.weight}gr`:""} · MV {selAmmo.muzzleVelocity}fps · BC {selAmmo.bc}
+                </p>
+                <div style={{overflowX:"auto"}}>
+                  <table className="ft">
+                    <thead><tr><th>Range</th><th>Drop (in)</th><th>Drop (cm)</th><th>MOA</th><th>MIL</th></tr></thead>
+                    <tbody>
+                      {[50,100,150,200,250,300,350,400,450,500].map(d=>{
+                        const r = dropAtDistance(d);
+                        if (!r) return null;
+                        const isZero = Math.abs(r.poi_in)<0.1;
+                        return <tr key={d}>
+                          <td style={{fontFamily:ff,color:isZero?t.success:t.text}}>{d}m{isZero?" ✓":""}</td>
+                          <td style={{color:r.poi_in<-0.1?t.text:r.poi_in>0.1?t.accent:t.success}}>{r.poi_in>=0?"+":""}{r.poi_in.toFixed(1)}</td>
+                          <td>{r.poi_cm>=0?"+":""}{r.poi_cm.toFixed(1)}</td>
+                          <td style={{fontFamily:ff,color:t.accent}}>{r.moa>=0?"+":""}{r.moa.toFixed(2)}</td>
+                          <td style={{fontFamily:ff,color:t.accent}}>{r.mil>=0?"+":""}{r.mil.toFixed(2)}</td>
+                        </tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p style={{fontSize:10,color:t.textMuted,marginTop:10,fontStyle:"italic"}}>
+                  Estimate uses simplified G1 drag model — verify on paper before relying. Negative drop = above zero, positive = below. MOA/MIL = up adjustment needed.
+                </p>
+              </div>}
+            </div>
+          }
+        </div>}
+
+        {tab==="zero" && <div className="card">
+          <div className="ct"><Icon name="target" size={15}/>Zero from Group</div>
+          <p style={{fontSize:12,color:t.textMuted,marginBottom:10}}>Group centre is high/low and left/right of bull. Both directions optional.</p>
+          <div className="row">
+            <div className="fld"><div className="lbl">High (+) / Low (–)</div><input className="inp" type="text" inputMode="text" value={zHigh} onChange={e=>setZHigh(e.target.value)} placeholder="e.g. -2"/></div>
+            <div className="fld"><div className="lbl">Right (+) / Left (–)</div><input className="inp" type="text" inputMode="text" value={zRight} onChange={e=>setZRight(e.target.value)} placeholder="e.g. 1"/></div>
+          </div>
+          <div className="row">
+            <div className="fld"><div className="lbl">Unit</div>
+              <select className="inp" value={zUnit} onChange={e=>setZUnit(e.target.value)}>
+                <option value="in">Inches</option><option value="cm">Centimetres</option>
+              </select>
+            </div>
+            <div className="fld"><div className="lbl">Distance</div><input className="inp" type="number" value={zDist} onChange={e=>setZDist(e.target.value)}/></div>
+            <div className="fld"><div className="lbl">Unit</div>
+              <select className="inp" value={zDistUnit} onChange={e=>setZDistUnit(e.target.value)}>
+                <option value="m">Metres</option><option value="y">Yards</option>
+              </select>
+            </div>
+          </div>
+          {firearms.length>0 && <div className="fld"><div className="lbl">Rifle</div>
+            <select className="inp" value={selFirearmId} onChange={e=>setSelFirearmId(e.target.value)}>
+              <option value="">— Generic ¼ MOA —</option>
+              {firearms.map(f=><option key={f.id} value={f.id}>{f.name} — {f.scopeClick||"¼ MOA"}</option>)}
+            </select>
+          </div>}
+          {zero && <div className="card" style={{background:t.accentBg,marginTop:10,marginBottom:0}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div style={{textAlign:"center"}}>
+                <div className="lbl">Elevation</div>
+                <div style={{fontFamily:ff,fontSize:20,color:t.accent,marginTop:4}}>{zero.vertMoa>=0?"↑":"↓"} {Math.abs(zero.vertMoa).toFixed(2)} MOA</div>
+                <div style={{fontFamily:ff,fontSize:13,color:t.textMuted}}>{Math.abs(zero.vertMil).toFixed(2)} MIL</div>
+                <div style={{fontFamily:ff,fontSize:22,color:t.accent,marginTop:8}}>{Math.abs(Math.round(zero.vClicks))} {zero.vClicks>=0?"UP":"DOWN"}</div>
+                <div style={{fontSize:10,color:t.textMuted}}>clicks</div>
+              </div>
+              <div style={{textAlign:"center"}}>
+                <div className="lbl">Windage</div>
+                <div style={{fontFamily:ff,fontSize:20,color:t.accent,marginTop:4}}>{zero.horzMoa>=0?"→":"←"} {Math.abs(zero.horzMoa).toFixed(2)} MOA</div>
+                <div style={{fontFamily:ff,fontSize:13,color:t.textMuted}}>{Math.abs(zero.horzMil).toFixed(2)} MIL</div>
+                <div style={{fontFamily:ff,fontSize:22,color:t.accent,marginTop:8}}>{Math.abs(Math.round(zero.hClicks))} {zero.hClicks>=0?"RIGHT":"LEFT"}</div>
+                <div style={{fontSize:10,color:t.textMuted}}>clicks</div>
+              </div>
+            </div>
+            <p style={{fontSize:10,color:t.textMuted,marginTop:10,textAlign:"center"}}>at {selFirearm?.scopeClick||"¼ MOA"} per click</p>
+          </div>}
+        </div>}
+
+        <div className="card" style={{fontSize:11,color:t.textMuted,fontStyle:"italic"}}>
+          <strong style={{color:t.accent}}>Quick reference:</strong> 1 MOA ≈ 1″ at 100yd · 1 MIL = 10cm at 100m · ¼ MOA = 4 clicks per inch at 100yd
+        </div>
+      </div>
+    </div>;
+  }
+
   function FEO() {
     return <div>
       <div className="hdr"><h1>FEO Log</h1><p>Firearms Enquiry Officer Record</p></div>
@@ -1191,6 +1509,31 @@ function App() {
           <div className="fld"><div className="lbl">Serial No.</div><input className="inp" value={newFirearm.serial} onChange={e=>setNewFirearm(f=>({...f,serial:e.target.value}))}/></div>
         </div>
         <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newFirearm.notes} onChange={e=>setNewFirearm(f=>({...f,notes:e.target.value}))}/></div>
+        <hr className="dvd"/>
+        <div className="lbl" style={{marginBottom:8,fontSize:12,color:t.accent}}>Scope &amp; Zero Setup (used by calculator)</div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Scope Click Value</div>
+            <select className="inp" value={newFirearm.scopeClick} onChange={e=>setNewFirearm(f=>({...f,scopeClick:e.target.value}))}>
+              <option value="0.125moa">⅛ MOA</option>
+              <option value="0.25moa">¼ MOA</option>
+              <option value="0.5moa">½ MOA</option>
+              <option value="1moa">1 MOA</option>
+              <option value="0.05mil">0.05 MIL</option>
+              <option value="0.1mil">0.1 MIL (1cm @ 100m)</option>
+              <option value="0.2mil">0.2 MIL</option>
+            </select>
+          </div>
+          <div className="fld"><div className="lbl">Sight Height (in)</div><input className="inp" type="number" step="0.1" value={newFirearm.sightHeight} onChange={e=>setNewFirearm(f=>({...f,sightHeight:e.target.value}))} placeholder="1.5"/></div>
+        </div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Zero Distance</div><input className="inp" type="number" value={newFirearm.zeroDistance} onChange={e=>setNewFirearm(f=>({...f,zeroDistance:e.target.value}))} placeholder="100"/></div>
+          <div className="fld"><div className="lbl">Unit</div>
+            <select className="inp" value={newFirearm.zeroUnit} onChange={e=>setNewFirearm(f=>({...f,zeroUnit:e.target.value}))}>
+              <option value="m">Metres</option><option value="y">Yards</option>
+            </select>
+          </div>
+        </div>
+        <hr className="dvd"/>
         <div className="fld">
           <div className="lbl">Photo of Firearm</div>
           {newFirearm.photo
@@ -1441,6 +1784,14 @@ function App() {
           <div className="fld"><div className="lbl">Purchased</div><input className="inp" type="date" value={newAmmo.purchased} onChange={e=>setNewAmmo(a=>({...a,purchased:e.target.value}))}/></div>
         </div>
         <div className="fld"><div className="lbl">Lot / Batch No.</div><input className="inp" value={newAmmo.lot} onChange={e=>setNewAmmo(a=>({...a,lot:e.target.value}))} placeholder="Optional"/></div>
+        <hr className="dvd"/>
+        <div className="lbl" style={{marginBottom:8,fontSize:12,color:t.accent}}>Ballistic Data (optional — used by calculator)</div>
+        <div className="row">
+          <div className="fld"><div className="lbl">Muzzle Velocity (fps)</div><input className="inp" type="number" value={newAmmo.muzzleVelocity} onChange={e=>setNewAmmo(a=>({...a,muzzleVelocity:e.target.value}))} placeholder="e.g. 2900"/></div>
+          <div className="fld"><div className="lbl">Ballistic Coefficient</div><input className="inp" type="number" step="0.001" value={newAmmo.bc} onChange={e=>setNewAmmo(a=>({...a,bc:e.target.value}))} placeholder="G1 (e.g. 0.450)"/></div>
+        </div>
+        <p style={{fontSize:11,color:t.textMuted,marginTop:-4,marginBottom:10,fontStyle:"italic"}}>Find these on the manufacturer's box, website, or your chronograph readings.</p>
+        <hr className="dvd"/>
         <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newAmmo.notes} onChange={e=>setNewAmmo(a=>({...a,notes:e.target.value}))} placeholder="e.g. zeroed at 100m, MOA group"/></div>
         <div style={{display:"flex",gap:8,marginTop:14}}>
           <button className="btn bsl" onClick={save}>{editItem?"Update":"Save"}</button>
@@ -1679,7 +2030,7 @@ function App() {
     </div>;
   }
 
-  const PAGES = {dashboard:Dashboard,firearms:Firearms,ammo:Ammo,locations:Locations,sessions:Sessions,planner:Planner,land:Land,maintenance:Maintenance,shops:Shops,stats:Stats,feo:FEO,settings:Settings};
+  const PAGES = {dashboard:Dashboard,firearms:Firearms,ammo:Ammo,locations:Locations,sessions:Sessions,planner:Planner,land:Land,maintenance:Maintenance,shops:Shops,stats:Stats,calc:Calculator,feo:FEO,settings:Settings};
 
   return (
     <div className="app">
