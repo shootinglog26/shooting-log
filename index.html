@@ -379,6 +379,12 @@ const AMMO_LIBRARY = [
   {cal:"12 Bore", brand:"Gamebore", type:"Velocity", weight:32, mv:1500, bc:0.05, model:"g1", note:"32g hi-vel"},
   {cal:"12 Bore", brand:"Gamebore", type:"Steel Game", weight:32, mv:1400, bc:0.05, model:"g1", note:"32g steel"},
   {cal:"12 Bore", brand:"Lyalvale Express", type:"Supreme Game", weight:32, mv:1400, bc:0.05, model:"g1"},
+  {cal:"12 Bore", brand:"Just Cartridges (CSP)", type:"Club Trap 24g", weight:24, mv:1450, bc:0.05, model:"g1", note:"24g clay"},
+  {cal:"12 Bore", brand:"Just Cartridges (CSP)", type:"Club Sporter 28g", weight:28, mv:1400, bc:0.05, model:"g1", note:"28g sporter"},
+  {cal:"12 Bore", brand:"Just Cartridges (CSP)", type:"Club Game 32g", weight:32, mv:1400, bc:0.05, model:"g1", note:"32g game"},
+  {cal:"12 Bore", brand:"Just Cartridges (CSP)", type:"Club Pigeon 30g", weight:30, mv:1450, bc:0.05, model:"g1", note:"30g pigeon"},
+  {cal:"12 Bore", brand:"Just Cartridges (CSP)", type:"Steel Game 32g", weight:32, mv:1400, bc:0.05, model:"g1", note:"32g steel"},
+  {cal:"20 Bore", brand:"Just Cartridges (CSP)", type:"Club Game 25g", weight:25, mv:1380, bc:0.05, model:"g1", note:"25g game"},
   {cal:"12 Bore", brand:"Lyalvale Express", type:"Supreme Steel", weight:32, mv:1400, bc:0.05, model:"g1"},
   {cal:"12 Bore", brand:"Lyalvale Express", type:"Pigeon Select", weight:30, mv:1450, bc:0.05, model:"g1", note:"30g pigeon"},
   {cal:"12 Bore", brand:"Lyalvale Express", type:"World Cup", weight:28, mv:1450, bc:0.05, model:"g1", note:"28g clay"},
@@ -565,6 +571,7 @@ function App() {
     {id:"s9", name:"Hannam's Reloading", url:"https://hannamsreloading.com", category:"Reloading", location:"Yorkshire", notes:"Vihtavuori, Lapua, Berger, Lee Precision UK"},
     {id:"s10", name:"Reloading Solutions", url:"https://www.reloadingsolutions.com", category:"Reloading", location:"UK", notes:"Components & equipment"},
     {id:"s11", name:"Optics Warehouse", url:"https://www.opticswarehouse.co.uk", category:"Optics", location:"UK", notes:"Scopes, rangefinders, NV"},
+    {id:"s12", name:"Just Cartridges", url:"https://www.justcartridges.com", category:"National", location:"Oxfordshire", notes:"UK's largest shotgun cartridge specialist · 1500+ products · own CSP brand"},
   ]));
   const [hiatus, setHiatus] = useState(() => load("sl_hiatus",[]));
   const [feo, setFeo] = useState(() => load("sl_feo",{fac:"",facExpiry:"",sgc:"",sgcExpiry:"",name:"",address:"",feoName:"",feoContact:""}));
@@ -614,6 +621,7 @@ function App() {
   const [calcZDist, setCalcZDist] = useState("100");
   const [calcZUnit, setCalcZUnit] = useState("in");
   const [calcZDistUnit, setCalcZDistUnit] = useState("m");
+  const [calcStatsYear, setCalcStatsYear] = useState("all");
 
   // Ballistic environment - persisted
   const [environment, setEnvironment] = useState(() => load("sl_env", {
@@ -1442,40 +1450,393 @@ function App() {
   }
 
   function Stats() {
-    const byMonth=sessions.reduce((a,s)=>{const m=s.date?.substr(0,7);if(!m)return a;a[m]=(a[m]||0)+(parseInt(s.rounds)||0);return a;},{});
-    const top=Object.entries(quarryBreakdown).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    const byLoc=locations.map(l=>({name:l.name,n:sessions.filter(s=>s.locationId===l.id).length})).filter(l=>l.n>0).sort((a,b)=>b.n-a.n);
-    const maxR=Math.max(...Object.values(byMonth),1);
+    // ===== Compute everything once =====
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const yearOf = (d) => d ? d.substr(0,4) : "";
+    const monthOf = (d) => d ? d.substr(0,7) : "";
+    const dayOfWeek = (d) => { const x=new Date(d); return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][x.getDay()]; };
+
+    // Year filter
+    const allYears = [...new Set(sessions.map(s=>yearOf(s.date)).filter(Boolean))].sort().reverse();
+    const [yearFilter, setYearFilter] = [calcStatsYear, setCalcStatsYear];
+    const filteredSessions = yearFilter==="all"
+      ? sessions
+      : sessions.filter(s=>yearOf(s.date)===yearFilter);
+
+    // Totals (filtered)
+    const fTotalSessions = filteredSessions.length;
+    const fTotalRounds = filteredSessions.reduce((a,s)=>a+(parseInt(s.rounds)||0),0);
+    const fTotalQuarry = filteredSessions.reduce((a,s)=>a+Object.values(s.quarryBag||{}).reduce((b,v)=>b+(parseInt(v)||0),0),0);
+    const fAvgRounds = fTotalSessions ? Math.round(fTotalRounds/fTotalSessions) : 0;
+
+    // Days since last shoot
+    const lastSession = sessions.length ? [...sessions].sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0] : null;
+    const daysSinceLast = lastSession ? Math.floor((today0 - new Date(lastSession.date))/86400000) : null;
+
+    // Shooting days vs hiatus days in last 365 days
+    const yearAgo = new Date(today0); yearAgo.setFullYear(yearAgo.getFullYear()-1);
+    const last365Sessions = sessions.filter(s=>new Date(s.date)>=yearAgo).length;
+    const last365Hiatus = hiatus.reduce((acc,h)=>{
+      const s = new Date(Math.max(yearAgo, new Date(h.startDate)));
+      const e = new Date(Math.min(today0, new Date(h.endDate)));
+      const d = Math.max(0, Math.round((e-s)/86400000)+1);
+      return acc + d;
+    }, 0);
+
+    // Quarry breakdown (filtered)
+    const fQuarry = filteredSessions.reduce((a,s)=>{
+      Object.entries(s.quarryBag||{}).forEach(([k,v])=>{a[k]=(a[k]||0)+(parseInt(v)||0);});
+      return a;
+    }, {});
+    const topSpecies = Object.entries(fQuarry).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+    // By location
+    const byLocation = locations.map(l=>{
+      const ls = filteredSessions.filter(s=>s.locationId===l.id);
+      return {name:l.name, sessions:ls.length, rounds:ls.reduce((a,s)=>a+(parseInt(s.rounds)||0),0)};
+    }).filter(l=>l.sessions>0).sort((a,b)=>b.sessions-a.sessions);
+
+    // By firearm
+    const byFirearm = firearms.map(f=>{
+      const fs = filteredSessions.filter(s=>sessionFirearmIds(s).includes(f.id));
+      const rounds = fs.reduce((a,s)=>{
+        const ids = sessionFirearmIds(s);
+        return a + Math.round((parseInt(s.rounds)||0) / (ids.length||1));
+      }, 0);
+      return {name:f.name, calibre:f.calibre, sessions:fs.length, rounds};
+    }).filter(f=>f.sessions>0).sort((a,b)=>b.rounds-a.rounds);
+
+    // By calibre
+    const byCalibre = {};
+    filteredSessions.forEach(s=>{
+      const guns = sessionFirearms(s);
+      const cals = [...new Set(guns.map(g=>g.calibre))];
+      cals.forEach(c=>{
+        if (!c) return;
+        if (!byCalibre[c]) byCalibre[c] = {sessions:0, rounds:0};
+        byCalibre[c].sessions++;
+        byCalibre[c].rounds += Math.round((parseInt(s.rounds)||0) / cals.length);
+      });
+    });
+    const calibreList = Object.entries(byCalibre).sort((a,b)=>b[1].rounds-a[1].rounds);
+
+    // By purpose
+    const purposeLabels = {target:"Target",pest:"Pest Control",stalking:"Stalking",rough:"Rough",driven:"Driven Game",wildfowling:"Wildfowling",clay:"Clay",zero:"Zeroing",practice:"Practice"};
+    const byPurpose = {};
+    filteredSessions.forEach(s=>{
+      const p = s.purpose||"target";
+      if (!byPurpose[p]) byPurpose[p] = {sessions:0, rounds:0};
+      byPurpose[p].sessions++;
+      byPurpose[p].rounds += parseInt(s.rounds)||0;
+    });
+    const purposeList = Object.entries(byPurpose).sort((a,b)=>b[1].sessions-a[1].sessions);
+
+    // Day of week pattern
+    const dayPattern = {Sun:0,Mon:0,Tue:0,Wed:0,Thu:0,Fri:0,Sat:0};
+    filteredSessions.forEach(s=>{ if(s.date) dayPattern[dayOfWeek(s.date)]++; });
+    const dayOrder = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+    // Monthly history - last 12 months from latest session or today
+    const months = [];
+    const refDate = new Date(today0);
+    for (let i=11; i>=0; i--) {
+      const d = new Date(refDate.getFullYear(), refDate.getMonth()-i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      months.push({key, label:d.toLocaleString("en-GB",{month:"short"})+(i===11||d.getMonth()===0?` ${String(d.getFullYear()).slice(2)}`:""), rounds:0, sessions:0, quarry:0});
+    }
+    const monthMap = Object.fromEntries(months.map(m=>[m.key, m]));
+    sessions.forEach(s=>{
+      const k = monthOf(s.date);
+      if (monthMap[k]) {
+        monthMap[k].rounds += parseInt(s.rounds)||0;
+        monthMap[k].sessions++;
+        monthMap[k].quarry += Object.values(s.quarryBag||{}).reduce((a,v)=>a+(parseInt(v)||0),0);
+      }
+    });
+    const maxMonthRounds = Math.max(...months.map(m=>m.rounds), 1);
+    const maxMonthSessions = Math.max(...months.map(m=>m.sessions), 1);
+
+    // Weather pattern - what weather do we shoot in most?
+    const weatherCount = {};
+    filteredSessions.forEach(s=>{ if(s.weather) weatherCount[s.weather] = (weatherCount[s.weather]||0)+1; });
+    const weatherList = Object.entries(weatherCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    // Best & most productive sessions
+    const bestQuarrySession = filteredSessions
+      .map(s=>({s, q:Object.values(s.quarryBag||{}).reduce((a,v)=>a+(parseInt(v)||0),0)}))
+      .filter(x=>x.q>0)
+      .sort((a,b)=>b.q-a.q)[0];
+    const biggestRoundsSession = [...filteredSessions]
+      .sort((a,b)=>(parseInt(b.rounds)||0)-(parseInt(a.rounds)||0))[0];
+
+    // Heatmap data - last 365 days, day-by-day round counts
+    const heatmap = {};
+    sessions.forEach(s=>{ heatmap[s.date] = (heatmap[s.date]||0) + (parseInt(s.rounds)||0); });
+    const heatCells = [];
+    for (let i=0; i<365; i++) {
+      const d = new Date(today0); d.setDate(d.getDate()-364+i);
+      const key = d.toISOString().split("T")[0];
+      heatCells.push({date:key, day:d.getDay(), rounds:heatmap[key]||0});
+    }
+    const heatMax = Math.max(...heatCells.map(c=>c.rounds), 1);
+
+    // ===== Helpers for charts =====
+    const ChartBar = ({label, value, max, color, unit=""}) => (
+      <div style={{marginBottom:8}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+          <span style={{color:t.text}}>{label}</span>
+          <span style={{color:color||t.accent,fontFamily:ff}}>{value.toLocaleString()}{unit}</span>
+        </div>
+        <div className="pbg"><div className="pb" style={{width:`${max>0?(value/max)*100:0}%`,background:color||t.accent}}/></div>
+      </div>
+    );
+
+    // SVG line chart for monthly trends
+    const LineChart = ({data, getValue, label, color}) => {
+      const w = 320, h = 110, pad = {l:30, r:10, t:10, b:25};
+      const innerW = w - pad.l - pad.r, innerH = h - pad.t - pad.b;
+      const max = Math.max(...data.map(getValue), 1);
+      const pts = data.map((d,i) => ({
+        x: pad.l + (i/(data.length-1||1)) * innerW,
+        y: pad.t + innerH - (getValue(d)/max) * innerH,
+        d
+      }));
+      const path = pts.map((p,i)=>`${i===0?"M":"L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+      const areaPath = `${path} L${pts[pts.length-1].x},${pad.t+innerH} L${pts[0].x},${pad.t+innerH} Z`;
+      return <svg viewBox={`0 0 ${w} ${h}`} style={{width:"100%",height:"auto",display:"block"}}>
+        {/* grid */}
+        {[0,0.5,1].map((g,i)=>(
+          <line key={i} x1={pad.l} x2={w-pad.r} y1={pad.t+innerH*(1-g)} y2={pad.t+innerH*(1-g)} stroke={t.border} strokeWidth="0.5"/>
+        ))}
+        {/* area */}
+        <path d={areaPath} fill={color||t.accent} fillOpacity="0.12"/>
+        {/* line */}
+        <path d={path} fill="none" stroke={color||t.accent} strokeWidth="1.5" strokeLinejoin="round"/>
+        {/* points */}
+        {pts.map((p,i)=>(
+          <circle key={i} cx={p.x} cy={p.y} r={getValue(p.d)>0?2:0} fill={color||t.accent}/>
+        ))}
+        {/* y-axis labels */}
+        <text x={pad.l-3} y={pad.t+5} fontSize="8" fill={t.textMuted} textAnchor="end">{max}</text>
+        <text x={pad.l-3} y={pad.t+innerH+3} fontSize="8" fill={t.textMuted} textAnchor="end">0</text>
+        {/* x-axis labels (every 2nd) */}
+        {pts.map((p,i)=>i%2===0?(
+          <text key={"x"+i} x={p.x} y={h-8} fontSize="8" fill={t.textMuted} textAnchor="middle">{data[i].label}</text>
+        ):null)}
+      </svg>;
+    };
+
+    // Donut chart for purpose breakdown
+    const Donut = ({data, getLabel, getValue, getColor}) => {
+      const total = data.reduce((a,d)=>a+getValue(d),0);
+      if (total===0) return null;
+      const cx=70, cy=70, rOut=60, rIn=38;
+      let angle = -Math.PI/2;
+      const segs = data.map((d,i)=>{
+        const portion = getValue(d)/total;
+        const a1 = angle, a2 = angle + portion*Math.PI*2;
+        angle = a2;
+        const large = portion > 0.5 ? 1 : 0;
+        const x1 = cx + rOut*Math.cos(a1), y1 = cy + rOut*Math.sin(a1);
+        const x2 = cx + rOut*Math.cos(a2), y2 = cy + rOut*Math.sin(a2);
+        const xi1 = cx + rIn*Math.cos(a2), yi1 = cy + rIn*Math.sin(a2);
+        const xi2 = cx + rIn*Math.cos(a1), yi2 = cy + rIn*Math.sin(a1);
+        const path = `M${x1},${y1} A${rOut},${rOut} 0 ${large} 1 ${x2},${y2} L${xi1},${yi1} A${rIn},${rIn} 0 ${large} 0 ${xi2},${yi2} Z`;
+        return {path, label:getLabel(d), value:getValue(d), color:getColor(i), portion};
+      });
+      return <div style={{display:"flex",gap:14,alignItems:"center",flexWrap:"wrap"}}>
+        <svg viewBox="0 0 140 140" style={{width:140,height:140,flexShrink:0}}>
+          {segs.map((s,i)=><path key={i} d={s.path} fill={s.color}/>)}
+          <text x="70" y="68" textAnchor="middle" fill={t.text} fontSize="18" fontFamily={ff} fontWeight="bold">{total}</text>
+          <text x="70" y="82" textAnchor="middle" fill={t.textMuted} fontSize="9">total</text>
+        </svg>
+        <div style={{flex:1,minWidth:120}}>
+          {segs.map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,marginBottom:4}}>
+              <span style={{width:10,height:10,background:s.color,borderRadius:2,flexShrink:0}}/>
+              <span style={{flex:1,color:t.text}}>{s.label}</span>
+              <span style={{color:t.textMuted,fontFamily:ff}}>{s.value} ({Math.round(s.portion*100)}%)</span>
+            </div>
+          ))}
+        </div>
+      </div>;
+    };
+
+    const donutColors = [t.accent, "#5dade2", "#58d68d", "#f5b041", "#ec7063", "#a569bd", "#48c9b0", "#f1948a", "#85929e"];
+
     return <div>
       <div className="hdr"><h1>Statistics</h1><p>Performance &amp; Records Analysis</p></div>
       <div className="main">
+
+        {/* Year filter */}
+        {allYears.length>0 && <div className="card" style={{padding:8,display:"flex",gap:5,overflowX:"auto"}}>
+          <button onClick={()=>setYearFilter("all")} style={{padding:"6px 12px",border:`1px solid ${yearFilter==="all"?t.accent:t.border}`,background:yearFilter==="all"?t.accentBg:"transparent",color:yearFilter==="all"?t.accent:t.textMuted,borderRadius:6,fontSize:12,fontFamily:ff,cursor:"pointer",whiteSpace:"nowrap"}}>All Time</button>
+          {allYears.map(y=>(
+            <button key={y} onClick={()=>setYearFilter(y)} style={{padding:"6px 12px",border:`1px solid ${yearFilter===y?t.accent:t.border}`,background:yearFilter===y?t.accentBg:"transparent",color:yearFilter===y?t.accent:t.textMuted,borderRadius:6,fontSize:12,fontFamily:ff,cursor:"pointer",whiteSpace:"nowrap"}}>{y}</button>
+          ))}
+        </div>}
+
+        {/* Headline stats */}
         <div className="sg" style={{marginBottom:12}}>
-          <div className="sb"><div className="val">{totalSessions}</div><div className="sl">Sessions</div></div>
-          <div className="sb"><div className="val">{totalRounds.toLocaleString()}</div><div className="sl">Rounds</div></div>
-          <div className="sb"><div className="val">{totalQuarry}</div><div className="sl">Quarry</div></div>
-          <div className="sb"><div className="val">{totalSessions>0?Math.round(totalRounds/totalSessions):0}</div><div className="sl">Avg Rds/Session</div></div>
+          <div className="sb"><div className="val">{fTotalSessions}</div><div className="sl">Sessions</div></div>
+          <div className="sb"><div className="val">{fTotalRounds.toLocaleString()}</div><div className="sl">Rounds</div></div>
+          <div className="sb"><div className="val">{fTotalQuarry}</div><div className="sl">Quarry Taken</div></div>
+          <div className="sb"><div className="val">{fAvgRounds}</div><div className="sl">Avg Rds/Session</div></div>
         </div>
-        {top.length>0&&<div className="card">
+
+        {/* At-a-glance facts */}
+        {sessions.length>0 && <div className="card">
+          <div className="ct"><Icon name="target" size={15}/>At a Glance</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:12}}>
+            {daysSinceLast!==null && <div>
+              <div style={{color:t.textMuted,fontSize:11,marginBottom:2}}>Days since last shoot</div>
+              <div style={{fontFamily:ff,color:daysSinceLast>30?t.danger:t.accent,fontSize:18}}>{daysSinceLast}</div>
+            </div>}
+            <div>
+              <div style={{color:t.textMuted,fontSize:11,marginBottom:2}}>Active days (last 365)</div>
+              <div style={{fontFamily:ff,color:t.accent,fontSize:18}}>{last365Sessions}</div>
+            </div>
+            {last365Hiatus>0 && <div>
+              <div style={{color:t.textMuted,fontSize:11,marginBottom:2}}>Non-shooting days (last 365)</div>
+              <div style={{fontFamily:ff,color:t.textMuted,fontSize:18}}>{last365Hiatus}</div>
+            </div>}
+            <div>
+              <div style={{color:t.textMuted,fontSize:11,marginBottom:2}}>Firearms in use</div>
+              <div style={{fontFamily:ff,color:t.accent,fontSize:18}}>{byFirearm.length}/{firearms.length}</div>
+            </div>
+          </div>
+        </div>}
+
+        {/* Monthly trend - rounds */}
+        {sessions.length>0 && <div className="card">
+          <div className="ct"><Icon name="chart" size={15}/>Last 12 Months — Rounds Fired</div>
+          <LineChart data={months} getValue={m=>m.rounds} color={t.accent}/>
+        </div>}
+
+        {/* Monthly trend - sessions */}
+        {sessions.length>0 && <div className="card">
+          <div className="ct"><Icon name="calendar" size={15}/>Last 12 Months — Sessions</div>
+          <LineChart data={months} getValue={m=>m.sessions} color="#5dade2"/>
+        </div>}
+
+        {/* Heatmap */}
+        {sessions.length>0 && <div className="card">
+          <div className="ct"><Icon name="calendar" size={15}/>Activity Heatmap (last 365 days)</div>
+          <div style={{overflowX:"auto",padding:"4px 0"}}>
+            <div style={{display:"grid",gridTemplateRows:"repeat(7, 10px)",gridAutoFlow:"column",gridAutoColumns:"10px",gap:2,minWidth:540}}>
+              {heatCells.map((c,i)=>{
+                const intensity = c.rounds>0 ? Math.min(1, 0.2 + 0.8 * (c.rounds/heatMax)) : 0;
+                const bg = c.rounds>0 ? `${t.accent}${Math.round(intensity*255).toString(16).padStart(2,"0")}` : t.border;
+                return <div key={i} title={`${c.date}: ${c.rounds} rounds`} style={{background:bg,borderRadius:1,gridRow:c.day+1}}/>;
+              })}
+            </div>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:t.textMuted,marginTop:6}}>
+            <span>{heatCells[0]?.date}</span>
+            <span>Less</span>
+            <span style={{display:"inline-flex",gap:2}}>
+              {[0,0.25,0.5,0.75,1].map(i=><span key={i} style={{width:8,height:8,background:i===0?t.border:`${t.accent}${Math.round((0.2+0.8*i)*255).toString(16).padStart(2,"0")}`,borderRadius:1,display:"inline-block"}}/>)}
+            </span>
+            <span>More</span>
+            <span>{heatCells[heatCells.length-1]?.date}</span>
+          </div>
+        </div>}
+
+        {/* Day of week pattern */}
+        {sessions.length>0 && <div className="card">
+          <div className="ct"><Icon name="calendar" size={15}/>When You Shoot — Day of Week</div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:5,height:90,padding:"5px 0"}}>
+            {dayOrder.map(d=>{
+              const v = dayPattern[d];
+              const max = Math.max(...Object.values(dayPattern),1);
+              return <div key={d} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <div style={{flex:1,width:"100%",display:"flex",alignItems:"flex-end"}}>
+                  <div style={{width:"100%",height:`${(v/max)*100}%`,background:t.accent,borderRadius:"4px 4px 0 0",minHeight:v>0?4:0}}/>
+                </div>
+                <div style={{fontSize:10,color:t.textMuted,fontFamily:ff}}>{d}</div>
+                <div style={{fontSize:11,color:t.accent,fontFamily:ff}}>{v}</div>
+              </div>;
+            })}
+          </div>
+        </div>}
+
+        {/* Top quarry species */}
+        {topSpecies.length>0 && <div className="card">
           <div className="ct"><Icon name="paw" size={15}/>Top Quarry Species</div>
-          {top.map(([n,c])=><div key={n} style={{marginBottom:9}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}><span>{n}</span><span style={{color:t.accent,fontFamily:ff}}>{c}</span></div>
-            <div className="pbg"><div className="pb" style={{width:`${(c/top[0][1])*100}%`}}/></div>
-          </div>)}
+          {topSpecies.map(([n,c])=>(
+            <ChartBar key={n} label={n} value={c} max={topSpecies[0][1]}/>
+          ))}
         </div>}
-        {byLoc.length>0&&<div className="card">
+
+        {/* Sessions by purpose - donut */}
+        {purposeList.length>0 && <div className="card">
+          <div className="ct"><Icon name="target" size={15}/>Sessions by Purpose</div>
+          <Donut data={purposeList}
+            getLabel={d=>purposeLabels[d[0]]||d[0]}
+            getValue={d=>d[1].sessions}
+            getColor={i=>donutColors[i%donutColors.length]}/>
+        </div>}
+
+        {/* By firearm */}
+        {byFirearm.length>0 && <div className="card">
+          <div className="ct"><Icon name="gun" size={15}/>Rounds by Firearm</div>
+          {byFirearm.map(f=>(
+            <ChartBar key={f.name} label={`${f.name} (${f.calibre})`} value={f.rounds} max={byFirearm[0].rounds} unit=" rds"/>
+          ))}
+        </div>}
+
+        {/* By calibre */}
+        {calibreList.length>0 && <div className="card">
+          <div className="ct"><Icon name="ammo" size={15}/>Rounds by Calibre</div>
+          {calibreList.map(([c,d])=>(
+            <ChartBar key={c} label={c} value={d.rounds} max={calibreList[0][1].rounds} unit=" rds"/>
+          ))}
+        </div>}
+
+        {/* Sessions by location */}
+        {byLocation.length>0 && <div className="card">
           <div className="ct"><Icon name="map" size={15}/>Sessions by Location</div>
-          {byLoc.map(l=><div key={l.name} style={{marginBottom:9}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}><span>{l.name}</span><span style={{color:t.accent,fontFamily:ff}}>{l.n}</span></div>
-            <div className="pbg"><div className="pb" style={{width:`${(l.n/(byLoc[0]?.n||1))*100}%`}}/></div>
-          </div>)}
+          {byLocation.map(l=>(
+            <ChartBar key={l.name} label={l.name} value={l.sessions} max={byLocation[0].sessions}/>
+          ))}
         </div>}
-        {Object.keys(byMonth).length>0&&<div className="card">
-          <div className="ct"><Icon name="chart" size={15}/>Monthly Rounds</div>
-          {Object.entries(byMonth).sort().slice(-6).map(([m,r])=><div key={m} style={{marginBottom:9}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:3}}><span>{m}</span><span style={{color:t.accent,fontFamily:ff}}>{r}</span></div>
-            <div className="pbg"><div className="pb" style={{width:`${(r/maxR)*100}%`}}/></div>
-          </div>)}
+
+        {/* Weather */}
+        {weatherList.length>0 && <div className="card">
+          <div className="ct"><Icon name="cloud" size={15}/>Most Common Conditions</div>
+          {weatherList.map(([w,n])=>(
+            <ChartBar key={w} label={w} value={n} max={weatherList[0][1]}/>
+          ))}
         </div>}
+
+        {/* Best sessions */}
+        {(bestQuarrySession || biggestRoundsSession) && <div className="card">
+          <div className="ct"><Icon name="target" size={15}/>Notable Sessions</div>
+          {bestQuarrySession && <div style={{padding:10,background:t.accentBg,borderRadius:8,marginBottom:8}}>
+            <div style={{fontSize:11,color:t.textMuted}}>Best quarry bag</div>
+            <div style={{fontFamily:ff,fontSize:14,color:t.accent}}>{fmt(bestQuarrySession.s.date)} — {bestQuarrySession.q} quarry</div>
+            <div style={{fontSize:11,color:t.textMuted,marginTop:3}}>{locations.find(l=>l.id===bestQuarrySession.s.locationId)?.name||"—"}</div>
+          </div>}
+          {biggestRoundsSession && biggestRoundsSession.rounds>0 && <div style={{padding:10,background:t.accentBg,borderRadius:8}}>
+            <div style={{fontSize:11,color:t.textMuted}}>Most rounds in a session</div>
+            <div style={{fontFamily:ff,fontSize:14,color:t.accent}}>{fmt(biggestRoundsSession.date)} — {biggestRoundsSession.rounds} rounds</div>
+            <div style={{fontSize:11,color:t.textMuted,marginTop:3}}>{locations.find(l=>l.id===biggestRoundsSession.locationId)?.name||"—"}</div>
+          </div>}
+        </div>}
+
+        {/* Ammo summary */}
+        {ammoStock.length>0 && <div className="card">
+          <div className="ct"><Icon name="ammo" size={15}/>Ammo Inventory Summary</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            <div className="sb"><div className="val">{ammoStock.reduce((a,x)=>a+(parseInt(x.qty)||0),0).toLocaleString()}</div><div className="sl">Total in Stock</div></div>
+            <div className="sb"><div className="val">{ammoStock.length}</div><div className="sl">Distinct Batches</div></div>
+          </div>
+          {ammoStock.filter(a=>parseInt(a.qty)<50).length>0 && <div style={{background:t.danger+"22",border:`1px solid ${t.danger}`,borderRadius:8,padding:9,fontSize:12,color:t.danger}}>
+            ⚠ {ammoStock.filter(a=>parseInt(a.qty)<50).length} batch{ammoStock.filter(a=>parseInt(a.qty)<50).length>1?"es":""} below 50 rounds
+          </div>}
+        </div>}
+
+        {sessions.length===0 && <div className="card"><div className="es">Log some sessions to see your stats</div></div>}
       </div>
     </div>;
   }
