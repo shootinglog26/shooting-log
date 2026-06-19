@@ -1308,8 +1308,17 @@ function App() {
             </div>}
             <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
               <button className="btn bsm" onClick={()=>{
+                // Normalise legacy firearmId into firearmIds array
+                const {firearmId,...rest}=s;
+                const ids = Array.isArray(rest.firearmIds) && rest.firearmIds.length ? rest.firearmIds : (firearmId?[firearmId]:[]);
+                setEditItem({...s,_type:"session"});
+                setNewSession({...rest,firearmIds:ids,targetPhotos:s.targetPhotos||[],quarryBag:s.quarryBag||{}});
+                setShowSessionForm(true);
+              }}>Edit</button>
+              <button className="btn bsm" onClick={()=>{
                 const {id,firearmId,...rest}=s;
                 const ids = Array.isArray(rest.firearmIds) && rest.firearmIds.length ? rest.firearmIds : (firearmId?[firearmId]:[]);
+                setEditItem(null);
                 setNewSession({...rest,firearmIds:ids,date:td(),targetPhotos:[],notes:""});
                 setShowSessionForm(true);
               }}>Duplicate</button>
@@ -2560,7 +2569,15 @@ function App() {
 
   function SessionModal() {
     if(!showSessionForm) return null;
+    const isEdit = editItem?._type === "session";
     const save = () => {
+      if (isEdit) {
+        // Edit: update in place, don't touch ammo stock (rounds may have changed but
+        // re-deducting would double count - user can manually adjust ammo if needed)
+        setSessions(ss=>ss.map(x=>x.id===editItem.id ? {...newSession, id:editItem.id} : x));
+        setShowSessionForm(false); setEditItem(null); setNewSession(blankSession);
+        return;
+      }
       const s={...newSession,id:gid()};
       setSessions(ss=>[...ss,s]);
       const chosenCals = (newSession.firearmIds||[]).map(id=>firearms.find(f=>f.id===id)?.calibre).filter(Boolean);
@@ -2582,9 +2599,9 @@ function App() {
       }
       setShowSessionForm(false); setNewSession(blankSession);
     };
-    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget)setShowSessionForm(false);}}>
+    return <div className="ov" onClick={e=>{if(e.target===e.currentTarget){setShowSessionForm(false);setEditItem(null);}}}>
       <div className="modal">
-        <div className="mt">New Session<button className="xb" onClick={()=>setShowSessionForm(false)}>×</button></div>
+        <div className="mt">{isEdit?"Edit Session":"New Session"}<button className="xb" onClick={()=>{setShowSessionForm(false);setEditItem(null);}}>×</button></div>
         <div className="row">
           <div className="fld"><div className="lbl">Date</div><input className="inp" type="date" value={newSession.date} onChange={e=>setNewSession(s=>({...s,date:e.target.value}))}/></div>
           <div className="fld"><div className="lbl">Purpose</div>
@@ -2714,8 +2731,8 @@ function App() {
         </div>
         <div className="fld"><div className="lbl">Notes</div><textarea className="inp" value={newSession.notes} onChange={e=>setNewSession(s=>({...s,notes:e.target.value}))} placeholder="Session notes..."/></div>
         <div style={{display:"flex",gap:8,marginTop:14}}>
-          <button className="btn bsl" onClick={save}>Save Session</button>
-          <button className="btn" onClick={()=>setShowSessionForm(false)}>Cancel</button>
+          <button className="btn bsl" onClick={save}>{isEdit?"Update Session":"Save Session"}</button>
+          <button className="btn" onClick={()=>{setShowSessionForm(false);setEditItem(null);}}>Cancel</button>
         </div>
       </div>
     </div>;
