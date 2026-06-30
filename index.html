@@ -37,12 +37,13 @@ const UK_QUARRY = [
 const WEATHER_CONDITIONS = ["Clear","Overcast","Light Rain","Heavy Rain","Snow","Fog","Windy","Sunny","Partly Cloudy","Frost"];
 const WIND_DIRECTIONS = ["N","NE","E","SE","S","SW","W","NW","Calm"];
 const LOCATION_TYPES = ["Farm","Clay Ground","Target Range","Woodland","Moorland","Marsh","Private Land","Shooting Club"];
-const FIREARM_TYPES = ["Rimfire","Centrefire","Shotgun","Air Rifle","Air Pistol"];
+const FIREARM_TYPES = ["Rimfire","Centrefire","Pistol/Revolver","Shotgun","Air Rifle","Air Pistol"];
 
 // Calibres per firearm type
 const CALIBRES_BY_TYPE = {
   "Rimfire": [".17 HMR",".17 Mach 2",".22 BB Cap",".22 CB Cap",".22 Short",".22 Long",".22 LR",".22 WMR",".22 Hornet"],
   "Centrefire": [".17 Hornet",".204 Ruger",".22-250",".222 Rem",".223 Rem",".243 Win","6mm Creedmoor","6.5 Creedmoor","6.5x55",".25-06",".260 Rem",".270 Win","7mm-08","7mm Rem Mag",".308 Win",".30-06",".300 Win Mag",".303 British",".338 Lapua",".375 H&H"],
+  "Pistol/Revolver": [".22 LR",".32 S&W",".32 H&R Magnum",".357 Magnum",".38 Special",".40 S&W",".44 Special",".44 Magnum",".45 ACP",".45 Colt","9mm Luger","10mm Auto",".380 ACP",".454 Casull",".500 S&W"],
   "Shotgun": ["12 Bore","16 Bore","20 Bore","28 Bore",".410","9mm Garden Gun"],
   "Air Rifle": [".177",".20",".22",".25",".30",".303",".357",".45",".50"],
   "Air Pistol": [".177",".22",".25"]
@@ -52,6 +53,7 @@ const CALIBRES_BY_TYPE = {
 const ACTIONS_BY_TYPE = {
   "Rimfire": ["Bolt Action","Semi-Auto","Lever Action","Pump Action","Single Shot","Straight Pull"],
   "Centrefire": ["Bolt Action","Semi-Auto","Lever Action","Straight Pull","Single Shot","Falling Block"],
+  "Pistol/Revolver": ["Single Action Revolver","Double Action Revolver","Semi-Auto","Single Shot","Bolt Action (pistol)"],
   "Shotgun": ["Over & Under","Side by Side","Pump Action","Semi-Auto","Single Shot","Bolt Action","Lever Action"],
   "Air Rifle": ["Pre-charged Pneumatic (PCP)","Break Barrel","Under Lever","Side Lever","CO2","Spring Piston","Gas Ram"],
   "Air Pistol": ["Pre-charged Pneumatic (PCP)","Break Barrel","CO2","Single Stroke Pneumatic","Spring Piston"]
@@ -61,6 +63,7 @@ const ACTIONS_BY_TYPE = {
 const AMMO_TYPES_BY_FTYPE = {
   "Rimfire": ["Hollow Point","Solid","Subsonic","Hyper-Velocity","Match","Segmented","Shot"],
   "Centrefire": ["Soft Point","Hollow Point","FMJ","Ballistic Tip","Match/BTHP","Bonded","Monolithic","Tracer","Subsonic"],
+  "Pistol/Revolver": ["FMJ","JHP","Soft Point","Wadcutter","Semi-Wadcutter","Lead Round Nose","Match"],
   "Shotgun": ["Game Shot","Clay/Target","Steel Shot","Bismuth","Tungsten","Slug","Buckshot","Blank"],
   "Air Rifle": ["Domed","Wadcutter","Hollow Point","Pointed","Round Ball","Slug","Polymer-tipped"],
   "Air Pistol": ["Domed","Wadcutter","Hollow Point","Round Ball"]
@@ -2480,11 +2483,14 @@ function App() {
               <option value="">Select type first</option>{FIREARM_TYPES.map(x=><option key={x}>{x}</option>)}
             </select>
           </div>
-          <div className="fld"><div className="lbl">Calibre *</div>
-            <select className="inp" value={newFirearm.calibre} onChange={e=>setNewFirearm(f=>({...f,calibre:e.target.value}))} disabled={!newFirearm.type}>
-              <option value="">{newFirearm.type?"Select":"Pick type first"}</option>
-              {(CALIBRES_BY_TYPE[newFirearm.type]||[]).map(x=><option key={x}>{x}</option>)}
-            </select>
+          <div className="fld"><div className="lbl">Calibre * <span style={{fontWeight:"normal",color:t.textMuted}}>(pick or type your own)</span></div>
+            <input className="inp" list="calibre-list-firearm" value={newFirearm.calibre}
+              onChange={e=>setNewFirearm(f=>({...f,calibre:e.target.value}))}
+              disabled={!newFirearm.type}
+              placeholder={newFirearm.type?"Select or type calibre":"Pick type first"}/>
+            <datalist id="calibre-list-firearm">
+              {(CALIBRES_BY_TYPE[newFirearm.type]||[]).map(x=><option key={x} value={x}/>)}
+            </datalist>
           </div>
         </div>
         <div className="fld"><div className="lbl">Action</div>
@@ -2758,10 +2764,13 @@ function App() {
     return <div className={`ov ${showSessionForm?"ov2":""}`} onClick={e=>{if(e.target===e.currentTarget){setShowAmmoForm(false);setEditItem(null);}}}>
       <div className="modal">
         <div className="mt">{editItem?"Edit Ammunition":"Add Ammunition"}<button className="xb" onClick={()=>{setShowAmmoForm(false);setEditItem(null);}}>×</button></div>
-        <div className="fld"><div className="lbl">Calibre *</div>
-          <select className="inp" value={newAmmo.calibre} onChange={e=>setNewAmmo(a=>({...a,calibre:e.target.value,type:""}))}>
-            <option value="">Select</option>{CALIBRES.map(x=><option key={x}>{x}</option>)}
-          </select>
+        <div className="fld"><div className="lbl">Calibre * <span style={{fontWeight:"normal",color:t.textMuted}}>(pick or type your own)</span></div>
+          <input className="inp" list="calibre-list-ammo" value={newAmmo.calibre}
+            onChange={e=>setNewAmmo(a=>({...a,calibre:e.target.value,type:""}))}
+            placeholder="Select or type calibre"/>
+          <datalist id="calibre-list-ammo">
+            {CALIBRES.map(x=><option key={x} value={x}/>)}
+          </datalist>
         </div>
         {newAmmo.calibre && (() => {
           const matching = AMMO_LIBRARY.filter(a=>a.cal===newAmmo.calibre);
