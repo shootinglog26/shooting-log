@@ -325,6 +325,10 @@ const AMMO_LIBRARY = [
   {cal:".223 Rem", brand:"Magtech", type:"FMJ", weight:55, mv:3215, bc:0.243, model:"g1"},
   {cal:".223 Rem", brand:"Fiocchi", type:"FMJ", weight:55, mv:3215, bc:0.243, model:"g1"},
   {cal:".223 Rem", brand:"Eley", type:"FMJ", weight:55, mv:3215, bc:0.243, model:"g1"},
+  {cal:".223 Rem", brand:"ADI", type:"55gr Sierra GameKing SBT", weight:55, mv:3240, bc:0.250, bcG7:0.123, model:"g1"},
+  {cal:".223 Rem", brand:"ADI", type:"55gr Sierra BlitzKing", weight:55, mv:3240, bc:0.267, model:"g1"},
+  {cal:".223 Rem", brand:"ADI", type:"62gr Sierra HPBT MatchKing", weight:62, mv:3020, bc:0.307, bcG7:0.158, model:"g7"},
+  {cal:".223 Rem", brand:"ADI", type:"69gr Sierra HPBT MatchKing", weight:69, mv:2950, bc:0.301, bcG7:0.155, model:"g7"},
   // ===== .22-250 =====
   {cal:".22-250", brand:"Hornady", type:"V-MAX", weight:55, mv:3680, bc:0.255, model:"g1"},
   {cal:".22-250", brand:"Federal", type:"Power-Shok SP", weight:55, mv:3680, bc:0.225, model:"g1"},
@@ -2989,11 +2993,15 @@ function App() {
         </div>
         {newAmmo.calibre && (() => {
           const matching = AMMO_LIBRARY.filter(a=>a.cal===newAmmo.calibre);
-          if (!matching.length) return null;
           return <div className="fld">
-            <div className="lbl">Quick-fill from Factory Library ({matching.length} loads)</div>
+            <div className="lbl">Quick-fill from Factory Library {matching.length>0?`(${matching.length} loads)`:"(none listed for this calibre)"}</div>
             <select className="inp" value="" onChange={e=>{
               if (!e.target.value) return;
+              if (e.target.value === "custom") {
+                // Clear the auto-fillable fields so the user starts fresh with their own entry
+                setNewAmmo(a=>({...a, brand:"", type:"", weight:"", muzzleVelocity:"", bc:"", bcG7:"", dragModel:"g1"}));
+                return;
+              }
               const pick = matching[parseInt(e.target.value)];
               setNewAmmo(a=>({...a,
                 brand: pick.brand,
@@ -3007,9 +3015,12 @@ function App() {
             }}>
               <option value="">— Pick a load to auto-fill —</option>
               {matching.map((a,i)=><option key={i} value={i}>{a.brand} {a.type} {a.weight}gr{a.note?` — ${a.note}`:""}</option>)}
+              <option value="custom">✎ Other — I'll enter brand &amp; details myself</option>
             </select>
             <p style={{fontSize:10,color:t.textMuted,marginTop:4,fontStyle:"italic"}}>
-              Auto-fills brand, type, weight, MV and BC. Edit any field after if needed (e.g. your chronograph reading).
+              {matching.length>0
+                ? "Auto-fills brand, type, weight, MV and BC. Edit any field after if needed (e.g. your chronograph reading)."
+                : "Not in our library yet — pick \"Other\" (or just fill in the fields below) to add it. Brand, weight, and any ballistic data you know will be saved for next time."}
             </p>
           </div>;
         })()}
