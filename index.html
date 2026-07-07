@@ -42,7 +42,7 @@ const FIREARM_TYPES = ["Rimfire","Centrefire","Pistol/Revolver","Shotgun","Air R
 // Calibres per firearm type
 const CALIBRES_BY_TYPE = {
   "Rimfire": [".17 HMR",".17 Mach 2",".22 BB Cap",".22 CB Cap",".22 Short",".22 Long",".22 LR",".22 WMR",".22 Hornet"],
-  "Centrefire": [".17 Hornet",".204 Ruger",".22-250",".222 Rem",".223 Rem",".243 Win","6mm Creedmoor","6.5 Creedmoor","6.5x55",".25-06",".260 Rem",".270 Win","7mm-08","7mm Rem Mag",".308 Win",".30-06",".300 Win Mag",".303 British",".338 Lapua",".375 H&H"],
+  "Centrefire": [".17 Hornet",".204 Ruger",".22-250",".222 Rem",".223 Rem",".243 Win","6mm Creedmoor","6.5 Creedmoor","6.5x55",".25-06",".260 Rem",".270 Win","7mm-08","7mm Rem Mag",".308 Win",".30-06",".300 Win Mag",".303 British",".338 Lapua",".375 H&H",".357 Magnum",".44 Special",".44 Magnum",".45 Colt",".454 Casull",".480 Ruger",".500 S&W"],
   "Pistol/Revolver": [".22 LR",".32 S&W",".32 H&R Magnum",".357 Magnum",".38 Special",".40 S&W",".44 Special",".44 Magnum",".45 ACP",".45 Colt","9mm Luger","10mm Auto",".380 ACP",".454 Casull",".500 S&W"],
   "Shotgun": ["12 Bore","16 Bore","20 Bore","28 Bore",".410","9mm Garden Gun"],
   "Air Rifle": [".177",".20",".22",".25",".30",".303",".357",".45",".50"],
@@ -201,6 +201,30 @@ const AMMO_LIBRARY = [
   {cal:".22 LR", brand:"Aguila", type:"SuperExtra Subsonic", weight:38, mv:1025, bc:0.110, model:"g1"},
   {cal:".22 LR", brand:"Aguila", type:"Super Maximum", weight:30, mv:1700, bc:0.085, model:"g1"},
   {cal:".22 LR", brand:"Aguila", type:"Sniper Subsonic", weight:60, mv:950, bc:0.190, model:"g1"},
+  {cal:".22 LR", brand:"Fiocchi", type:"Subsonic HP", weight:40, mv:1020, bc:0.140, model:"g1"},
+  {cal:".22 LR", brand:"Fiocchi", type:"Match Rifle", weight:40, mv:1082, bc:0.150, model:"g1"},
+  {cal:".22 LR", brand:"Fiocchi", type:"Exacta Small Game", weight:38, mv:1250, bc:0.110, model:"g1"},
+  {cal:".22 LR", brand:"Fiocchi", type:"Super Match", weight:40, mv:1076, bc:0.172, model:"g1"},
+  {cal:".22 LR", brand:"Magtech", type:"Standard Velocity", weight:40, mv:1150, bc:0.139, model:"g1"},
+  {cal:".22 LR", brand:"Magtech", type:"High Velocity HP", weight:38, mv:1235, bc:0.110, model:"g1"},
+  {cal:".22 LR", brand:"PMC", type:"Scoremaster", weight:40, mv:1150, bc:0.139, model:"g1"},
+  {cal:".22 LR", brand:"SK", type:"Standard Plus", weight:40, mv:1073, bc:0.150, model:"g1"},
+  {cal:".22 LR", brand:"SK", type:"Rifle Match", weight:40, mv:1063, bc:0.172, model:"g1"},
+  {cal:".22 LR", brand:"SK", type:"Biathlon Sport", weight:40, mv:1050, bc:0.150, model:"g1"},
+  {cal:".22 LR", brand:"SK", type:"Subsonic HP", weight:38, mv:1017, bc:0.110, model:"g1"},
+  {cal:".22 LR", brand:"Lapua", type:"Naturalis Subsonic", weight:38, mv:1017, bc:0.130, model:"g1"},
+  {cal:".22 LR", brand:"Lapua", type:"Polar Biathlon", weight:40, mv:1043, bc:0.150, model:"g1"},
+  {cal:".22 LR", brand:"Norma", type:"TAC-22 Subsonic", weight:40, mv:1020, bc:0.150, model:"g1"},
+  {cal:".22 LR", brand:"Norma", type:"Match", weight:40, mv:1076, bc:0.172, model:"g1"},
+  {cal:".22 LR", brand:"Winchester", type:"Power Point HP", weight:40, mv:1280, bc:0.130, model:"g1"},
+  {cal:".22 LR", brand:"Winchester", type:"T22 Target", weight:40, mv:1150, bc:0.150, model:"g1"},
+  {cal:".22 LR", brand:"CCI", type:"AR Tactical", weight:40, mv:1200, bc:0.139, model:"g1"},
+  {cal:".22 LR", brand:"CCI", type:"Blazer", weight:40, mv:1235, bc:0.130, model:"g1"},
+  {cal:".22 LR", brand:"Federal", type:"Champion Target", weight:40, mv:1240, bc:0.139, model:"g1"},
+  {cal:".22 LR", brand:"Federal", type:"Punch", weight:29, mv:1070, bc:0.100, model:"g1"},
+  {cal:".22 LR", brand:"Remington", type:"Golden Bullet HP", weight:36, mv:1280, bc:0.120, model:"g1"},
+  {cal:".22 LR", brand:"Remington", type:"Viper Truncated Cone", weight:36, mv:1410, bc:0.110, model:"g1"},
+  {cal:".22 LR", brand:"Geco", type:"Subsonic Target", weight:40, mv:1017, bc:0.150, model:"g1"},
   // ===== .22 WMR =====
   {cal:".22 WMR", brand:"CCI", type:"Maxi-Mag JHP", weight:40, mv:1875, bc:0.138, model:"g1"},
   {cal:".22 WMR", brand:"Hornady", type:"V-MAX", weight:30, mv:2200, bc:0.110, model:"g1"},
@@ -291,6 +315,16 @@ const AMMO_LIBRARY = [
   {cal:".223 Rem", brand:"Norma", type:"Oryx", weight:55, mv:3215, bc:0.245, model:"g1"},
   {cal:".223 Rem", brand:"Winchester", type:"Power Point", weight:64, mv:3020, bc:0.275, model:"g1"},
   {cal:".223 Rem", brand:"Remington", type:"Core-Lokt", weight:62, mv:3100, bc:0.270, model:"g1"},
+  {cal:".223 Rem", brand:"GGG", type:"FMJ SS109", weight:62, mv:2952, bc:0.304, model:"g1"},
+  {cal:".223 Rem", brand:"GGG", type:"FMJ", weight:55, mv:3117, bc:0.243, model:"g1"},
+  {cal:".223 Rem", brand:"GGG", type:"Sierra MatchKing HPBT", weight:69, mv:2952, bc:0.301, bcG7:0.155, model:"g7"},
+  {cal:".223 Rem", brand:"GGG", type:"Sierra MatchKing HPBT", weight:77, mv:2805, bc:0.362, bcG7:0.186, model:"g7"},
+  {cal:".223 Rem", brand:"PPU", type:"FMJ", weight:55, mv:3200, bc:0.243, model:"g1"},
+  {cal:".223 Rem", brand:"PPU", type:"SP", weight:55, mv:3200, bc:0.243, model:"g1"},
+  {cal:".223 Rem", brand:"Lapua", type:"Scenar-L", weight:69, mv:2887, bc:0.372, bcG7:0.194, model:"g7"},
+  {cal:".223 Rem", brand:"Magtech", type:"FMJ", weight:55, mv:3215, bc:0.243, model:"g1"},
+  {cal:".223 Rem", brand:"Fiocchi", type:"FMJ", weight:55, mv:3215, bc:0.243, model:"g1"},
+  {cal:".223 Rem", brand:"Eley", type:"FMJ", weight:55, mv:3215, bc:0.243, model:"g1"},
   // ===== .22-250 =====
   {cal:".22-250", brand:"Hornady", type:"V-MAX", weight:55, mv:3680, bc:0.255, model:"g1"},
   {cal:".22-250", brand:"Federal", type:"Power-Shok SP", weight:55, mv:3680, bc:0.225, model:"g1"},
@@ -351,6 +385,16 @@ const AMMO_LIBRARY = [
   {cal:".308 Win", brand:"RWS", type:"Speed Tip Pro", weight:165, mv:2854, bc:0.475, model:"g1"},
   {cal:".308 Win", brand:"GECO", type:"Star", weight:150, mv:2854, bc:0.400, model:"g1"},
   {cal:".308 Win", brand:"Remington", type:"Core-Lokt", weight:150, mv:2820, bc:0.314, model:"g1"},
+  {cal:".308 Win", brand:"GGG", type:"FMJ", weight:147, mv:2887, bc:0.401, model:"g1"},
+  {cal:".308 Win", brand:"GGG", type:"Sierra MatchKing HPBT", weight:168, mv:2854, bc:0.462, bcG7:0.243, model:"g7"},
+  {cal:".308 Win", brand:"GGG", type:"Sierra MatchKing HPBT", weight:175, mv:2657, bc:0.496, bcG7:0.243, model:"g7"},
+  {cal:".308 Win", brand:"GGG", type:"Sierra GameKing SBT", weight:150, mv:2887, bc:0.435, model:"g1"},
+  {cal:".308 Win", brand:"PPU", type:"FMJ", weight:145, mv:2822, bc:0.380, model:"g1"},
+  {cal:".308 Win", brand:"PPU", type:"SP", weight:150, mv:2822, bc:0.339, model:"g1"},
+  {cal:".308 Win", brand:"Lapua", type:"Scenar-L", weight:170, mv:2789, bc:0.480, bcG7:0.246, model:"g7"},
+  {cal:".308 Win", brand:"Lapua", type:"Naturalis", weight:170, mv:2822, bc:0.400, model:"g1"},
+  {cal:".308 Win", brand:"Magtech", type:"FMJ", weight:150, mv:2820, bc:0.314, model:"g1"},
+  {cal:".308 Win", brand:"Prvi Partizan", type:"HPBT Match", weight:168, mv:2657, bc:0.462, bcG7:0.224, model:"g7"},
   // ===== .30-06 (additional) =====
   {cal:".30-06", brand:"Sellier & Bellot", type:"SP", weight:180, mv:2657, bc:0.418, model:"g1"},
   {cal:".30-06", brand:"Sellier & Bellot", type:"SPCE", weight:180, mv:2657, bc:0.394, model:"g1"},
@@ -365,11 +409,62 @@ const AMMO_LIBRARY = [
   {cal:".303 British", brand:"Sellier & Bellot", type:"FMJ", weight:180, mv:2444, bc:0.394, model:"g1"},
   {cal:".303 British", brand:"PPU", type:"SP", weight:174, mv:2444, bc:0.420, model:"g1"},
   {cal:".303 British", brand:"Hornady", type:"InterLock SP", weight:174, mv:2440, bc:0.357, model:"g1"},
+  // ===== Pistol / Revolver =====
+  {cal:".22 LR", brand:"CCI", type:"Mini-Mag (pistol)", weight:40, mv:1235, bc:0.107, model:"g1"},
+  {cal:".32 S&W", brand:"Fiocchi", type:"LRN", weight:85, mv:680, bc:0.100, model:"g1"},
+  {cal:".32 H&R Magnum", brand:"Federal", type:"JHP", weight:85, mv:1100, bc:0.110, model:"g1"},
+  {cal:".357 Magnum", brand:"Federal", type:"Power-Shok JHP", weight:158, mv:1235, bc:0.160, model:"g1"},
+  {cal:".357 Magnum", brand:"Sellier & Bellot", type:"SP", weight:158, mv:1279, bc:0.160, model:"g1"},
+  {cal:".357 Magnum", brand:"Winchester", type:"Super-X JHP", weight:158, mv:1235, bc:0.160, model:"g1"},
+  {cal:".357 Magnum", brand:"Fiocchi", type:"JHP", weight:142, mv:1150, bc:0.145, model:"g1"},
+  {cal:".38 Special", brand:"Federal", type:"Champion FMJ", weight:130, mv:950, bc:0.140, model:"g1"},
+  {cal:".38 Special", brand:"Sellier & Bellot", type:"LRN", weight:158, mv:800, bc:0.160, model:"g1"},
+  {cal:".38 Special", brand:"Winchester", type:"USA FMJ", weight:130, mv:950, bc:0.140, model:"g1"},
+  {cal:".38 Special", brand:"Fiocchi", type:"SWC", weight:158, mv:850, bc:0.150, model:"g1"},
+  {cal:".40 S&W", brand:"Federal", type:"HST JHP", weight:165, mv:1130, bc:0.160, model:"g1"},
+  {cal:".40 S&W", brand:"Sellier & Bellot", type:"FMJ", weight:180, mv:985, bc:0.170, model:"g1"},
+  {cal:".40 S&W", brand:"Fiocchi", type:"FMJ", weight:170, mv:1000, bc:0.165, model:"g1"},
+  {cal:".44 Special", brand:"Federal", type:"Champion LSWC", weight:200, mv:870, bc:0.180, model:"g1"},
+  {cal:".44 Special", brand:"Fiocchi", type:"JHP", weight:200, mv:870, bc:0.180, model:"g1"},
+  {cal:".44 Special", brand:"Winchester", type:"Silvertip JHP", weight:200, mv:900, bc:0.185, model:"g1"},
+  {cal:".44 Special", brand:"Sellier & Bellot", type:"LRN", weight:246, mv:790, bc:0.200, model:"g1"},
+  {cal:".44 Magnum", brand:"Federal", type:"Power-Shok JSP", weight:240, mv:1180, bc:0.195, model:"g1"},
+  {cal:".44 Magnum", brand:"Federal", type:"Hydra-Shok JHP", weight:240, mv:1180, bc:0.200, model:"g1"},
+  {cal:".44 Magnum", brand:"Sellier & Bellot", type:"SP", weight:240, mv:1132, bc:0.195, model:"g1"},
+  {cal:".44 Magnum", brand:"Winchester", type:"Super-X JSP", weight:240, mv:1180, bc:0.195, model:"g1"},
+  {cal:".44 Magnum", brand:"Fiocchi", type:"JHP", weight:240, mv:1180, bc:0.200, model:"g1"},
+  {cal:".44 Magnum", brand:"Hornady", type:"XTP", weight:240, mv:1200, bc:0.210, model:"g1"},
+  {cal:".44 Magnum", brand:"Norma", type:"TXP", weight:240, mv:1263, bc:0.210, model:"g1"},
+  {cal:".45 ACP", brand:"Federal", type:"Champion FMJ", weight:230, mv:830, bc:0.195, model:"g1"},
+  {cal:".45 ACP", brand:"Sellier & Bellot", type:"FMJ", weight:230, mv:830, bc:0.195, model:"g1"},
+  {cal:".45 ACP", brand:"Winchester", type:"USA FMJ", weight:230, mv:830, bc:0.195, model:"g1"},
+  {cal:".45 ACP", brand:"Fiocchi", type:"FMJ", weight:230, mv:830, bc:0.195, model:"g1"},
+  {cal:".45 Colt", brand:"Federal", type:"Champion LRN", weight:225, mv:830, bc:0.195, model:"g1"},
+  {cal:".45 Colt", brand:"Sellier & Bellot", type:"LRN", weight:230, mv:790, bc:0.200, model:"g1"},
+  {cal:"9mm Luger", brand:"Federal", type:"Champion FMJ", weight:115, mv:1160, bc:0.140, model:"g1"},
+  {cal:"9mm Luger", brand:"Sellier & Bellot", type:"FMJ", weight:115, mv:1247, bc:0.140, model:"g1"},
+  {cal:"9mm Luger", brand:"Winchester", type:"USA FMJ", weight:115, mv:1190, bc:0.140, model:"g1"},
+  {cal:"9mm Luger", brand:"Fiocchi", type:"FMJ", weight:115, mv:1160, bc:0.140, model:"g1"},
+  {cal:"9mm Luger", brand:"GECO", type:"FMJ", weight:124, mv:1150, bc:0.145, model:"g1"},
+  {cal:"10mm Auto", brand:"Federal", type:"Trophy Bonded JSP", weight:180, mv:1275, bc:0.170, model:"g1"},
+  {cal:"10mm Auto", brand:"Sellier & Bellot", type:"FMJ", weight:180, mv:1181, bc:0.170, model:"g1"},
+  {cal:".380 ACP", brand:"Federal", type:"Champion FMJ", weight:95, mv:955, bc:0.115, model:"g1"},
+  {cal:".380 ACP", brand:"Sellier & Bellot", type:"FMJ", weight:92, mv:1017, bc:0.110, model:"g1"},
+  {cal:".454 Casull", brand:"Federal", type:"Trophy Bonded JSP", weight:260, mv:1800, bc:0.210, model:"g1"},
+  {cal:".500 S&W", brand:"Federal", type:"Trophy Bonded JSP", weight:325, mv:1800, bc:0.230, model:"g1"},
   // ===== .338 Lapua =====
   {cal:".338 Lapua", brand:"Lapua", type:"Scenar GB488", weight:250, mv:2950, bc:0.675, bcG7:0.345, model:"g7"},
   {cal:".338 Lapua", brand:"Lapua", type:"Scenar GB528", weight:300, mv:2700, bc:0.768, bcG7:0.394, model:"g7"},
+  {cal:".338 Lapua", brand:"Lapua", type:"Scenar-L GB643", weight:285, mv:2790, bc:0.789, bcG7:0.400, model:"g7"},
+  {cal:".338 Lapua", brand:"Lapua", type:"Naturalis", weight:231, mv:3020, bc:0.550, model:"g1"},
   {cal:".338 Lapua", brand:"Hornady", type:"ELD-Match", weight:285, mv:2745, bc:0.789, bcG7:0.391, model:"g7"},
+  {cal:".338 Lapua", brand:"Hornady", type:"A-Max", weight:250, mv:2900, bc:0.670, bcG7:0.336, model:"g7"},
   {cal:".338 Lapua", brand:"Sako", type:"TRG Precision", weight:250, mv:2950, bc:0.670, bcG7:0.340, model:"g7"},
+  {cal:".338 Lapua", brand:"Sako", type:"TRG Precision", weight:300, mv:2700, bc:0.768, bcG7:0.390, model:"g7"},
+  {cal:".338 Lapua", brand:"Norma", type:"Golden Target", weight:250, mv:2953, bc:0.670, bcG7:0.337, model:"g7"},
+  {cal:".338 Lapua", brand:"Norma", type:"Match Hollow Point", weight:300, mv:2707, bc:0.768, bcG7:0.394, model:"g7"},
+  {cal:".338 Lapua", brand:"Berger", type:"Hybrid OTM Tactical", weight:300, mv:2700, bc:0.818, bcG7:0.417, model:"g7"},
+  {cal:".338 Lapua", brand:"GGG", type:"Sierra MatchKing HPBT", weight:250, mv:2953, bc:0.587, bcG7:0.301, model:"g7"},
   // ===== 12 Bore (BC approximate where unpublished) =====
   {cal:"12 Bore", brand:"Eley", type:"VIP Game", weight:32, mv:1450, bc:0.05, model:"g1", note:"32g shot"},
   {cal:"12 Bore", brand:"Eley", type:"Hi-Flyer", weight:36, mv:1420, bc:0.05, model:"g1", note:"36g shot"},
@@ -1667,6 +1762,34 @@ function App() {
     });
     const calibreList = Object.entries(byCalibre).sort((a,b)=>b[1].rounds-a[1].rounds);
 
+    // ===== Favourite ammo (overall + by calibre) =====
+    // Group sessions by the ammo batch used, then roll up by brand+type+calibre
+    // (a batch may be re-stocked multiple times, so we key on brand/type/calibre, not batch id)
+    const ammoUsage = {}; // key: "calibre|brand|type" -> {calibre, brand, type, weight, rounds, sessions}
+    filteredSessions.forEach(s=>{
+      if (!s.ammoId || !parseInt(s.rounds)) return;
+      const batch = ammoStock.find(a=>a.id===s.ammoId);
+      if (!batch) return;
+      const key = `${batch.calibre}|${batch.brand||"Unbranded"}|${batch.type||""}`;
+      if (!ammoUsage[key]) ammoUsage[key] = {calibre:batch.calibre, brand:batch.brand||"Unbranded", type:batch.type||"", weight:batch.weight, rounds:0, sessions:0};
+      ammoUsage[key].rounds += parseInt(s.rounds)||0;
+      ammoUsage[key].sessions++;
+    });
+    const ammoUsageList = Object.values(ammoUsage).sort((a,b)=>b.rounds-a.rounds);
+    const topAmmoOverall = ammoUsageList.slice(0,8);
+    // By calibre: pick the top ammo for each calibre
+    const ammoByCalibre = {};
+    ammoUsageList.forEach(a=>{
+      if (!ammoByCalibre[a.calibre]) ammoByCalibre[a.calibre] = [];
+      ammoByCalibre[a.calibre].push(a);
+    });
+    Object.keys(ammoByCalibre).forEach(c=>ammoByCalibre[c].sort((a,b)=>b.rounds-a.rounds));
+    const calibresWithAmmo = Object.keys(ammoByCalibre).sort((a,b)=>(byCalibre[b]?.rounds||0)-(byCalibre[a]?.rounds||0));
+
+    // Overall lifetime total (not affected by year filter - always all-time)
+    const lifetimeRounds = sessions.reduce((a,s)=>a+(parseInt(s.rounds)||0),0);
+    const lifetimeSessions = sessions.length;
+
     // By purpose
     const purposeLabels = {target:"Target",pest:"Pest Control",stalking:"Stalking",rough:"Rough",driven:"Driven Game",wildfowling:"Wildfowling",clay:"Clay",zero:"Zeroing",practice:"Practice"};
     const byPurpose = {};
@@ -1831,6 +1954,20 @@ function App() {
           <div className="sb"><div className="val">{fAvgRounds}</div><div className="sl">Avg Rds/Session</div></div>
         </div>
 
+        {/* Lifetime total - always all-time regardless of year filter */}
+        {yearFilter!=="all" && <div className="card" style={{background:t.accentBg,border:`1px solid ${t.accent}66`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:11,color:t.textMuted,textTransform:"uppercase",letterSpacing:.5,fontFamily:ff}}>Lifetime Total (all years)</div>
+              <div style={{fontFamily:ff,fontSize:24,color:t.accent,marginTop:2}}>{lifetimeRounds.toLocaleString()} rounds</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:11,color:t.textMuted}}>{lifetimeSessions} sessions total</div>
+              <button className="btn bsm" style={{marginTop:6}} onClick={()=>setYearFilter("all")}>View All Time</button>
+            </div>
+          </div>
+        </div>}
+
         {/* At-a-glance facts */}
         {sessions.length>0 && <div className="card">
           <div className="ct"><Icon name="target" size={15}/>At a Glance</div>
@@ -1867,27 +2004,67 @@ function App() {
         </div>}
 
         {/* Heatmap */}
-        {sessions.length>0 && <div className="card">
-          <div className="ct"><Icon name="calendar" size={15}/>Activity Heatmap (last 365 days)</div>
-          <div style={{overflowX:"auto",padding:"4px 0"}}>
-            <div style={{display:"grid",gridTemplateRows:"repeat(7, 10px)",gridAutoFlow:"column",gridAutoColumns:"10px",gap:2,minWidth:540}}>
-              {heatCells.map((c,i)=>{
-                const intensity = c.rounds>0 ? Math.min(1, 0.2 + 0.8 * (c.rounds/heatMax)) : 0;
-                const bg = c.rounds>0 ? `${t.accent}${Math.round(intensity*255).toString(16).padStart(2,"0")}` : t.border;
-                return <div key={i} title={`${c.date}: ${c.rounds} rounds`} style={{background:bg,borderRadius:1,gridRow:c.day+1}}/>;
-              })}
+        {sessions.length>0 && (() => {
+          const cellSize = 11, cellGap = 3, leftPad = 24, topPad = 16;
+          const weeksCount = Math.ceil(heatCells.length / 7);
+          const svgW = leftPad + weeksCount * (cellSize+cellGap);
+          const svgH = topPad + 7 * (cellSize+cellGap);
+          // Group into week columns (cells already ordered oldest→newest by day)
+          const weekCols = [];
+          let col = [];
+          heatCells.forEach((c,i)=>{
+            col[c.day] = c;
+            if (c.day===6 || i===heatCells.length-1) { weekCols.push(col); col=[]; }
+          });
+          // Month labels: mark the first week column where a new month starts
+          const monthLabels = [];
+          let lastMonth = null;
+          weekCols.forEach((wk,wi)=>{
+            const firstCell = wk.find(c=>c);
+            if (!firstCell) return;
+            const m = firstCell.date.substr(0,7);
+            if (m !== lastMonth) {
+              monthLabels.push({wi, label: new Date(firstCell.date).toLocaleString("en-GB",{month:"short"})});
+              lastMonth = m;
+            }
+          });
+          const dayLabels = ["","Mon","","Wed","","Fri",""];
+          function colourFor(rounds) {
+            if (rounds<=0) return t.border;
+            const intensity = Math.min(1, 0.25 + 0.75 * Math.sqrt(rounds/heatMax));
+            // Blend from card background toward accent colour for a smoother ramp
+            return `${t.accent}${Math.round(intensity*255).toString(16).padStart(2,"0")}`;
+          }
+          return <div className="card">
+            <div className="ct"><Icon name="calendar" size={15}/>Activity Heatmap <span style={{color:t.textMuted,fontWeight:"normal",fontSize:11}}>(last 365 days)</span></div>
+            <div style={{overflowX:"auto",padding:"4px 0 8px"}}>
+              <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{width:Math.max(svgW,320),height:svgH,display:"block"}}>
+                {monthLabels.map((m,i)=>(
+                  <text key={i} x={leftPad + m.wi*(cellSize+cellGap)} y={10} fontSize="9" fill={t.textMuted}>{m.label}</text>
+                ))}
+                {dayLabels.map((l,i)=>l?(
+                  <text key={i} x={0} y={topPad + i*(cellSize+cellGap) + cellSize - 2} fontSize="8" fill={t.textMuted}>{l}</text>
+                ):null)}
+                {weekCols.map((wk,wi)=>wk.map((c,di)=>{
+                  if (!c) return null;
+                  return <rect key={wi+"-"+di}
+                    x={leftPad + wi*(cellSize+cellGap)} y={topPad + di*(cellSize+cellGap)}
+                    width={cellSize} height={cellSize} rx={2.5}
+                    fill={colourFor(c.rounds)}>
+                    <title>{`${c.date}: ${c.rounds} round${c.rounds===1?"":"s"}`}</title>
+                  </rect>;
+                }))}
+              </svg>
             </div>
-          </div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:t.textMuted,marginTop:6}}>
-            <span>{heatCells[0]?.date}</span>
-            <span>Less</span>
-            <span style={{display:"inline-flex",gap:2}}>
-              {[0,0.25,0.5,0.75,1].map(i=><span key={i} style={{width:8,height:8,background:i===0?t.border:`${t.accent}${Math.round((0.2+0.8*i)*255).toString(16).padStart(2,"0")}`,borderRadius:1,display:"inline-block"}}/>)}
-            </span>
-            <span>More</span>
-            <span>{heatCells[heatCells.length-1]?.date}</span>
-          </div>
-        </div>}
+            <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:6,fontSize:10,color:t.textMuted}}>
+              <span>Less</span>
+              {[0,0.35,0.6,0.85,1].map((v,i)=>(
+                <span key={i} style={{width:11,height:11,borderRadius:2.5,display:"inline-block",background:v===0?t.border:`${t.accent}${Math.round((0.25+0.75*v)*255).toString(16).padStart(2,"0")}`}}/>
+              ))}
+              <span>More</span>
+            </div>
+          </div>;
+        })()}
 
         {/* Day of week pattern */}
         {sessions.length>0 && <div className="card">
@@ -1938,6 +2115,44 @@ function App() {
           {calibreList.map(([c,d])=>(
             <ChartBar key={c} label={c} value={d.rounds} max={calibreList[0][1].rounds} unit=" rds"/>
           ))}
+        </div>}
+
+        {/* Favourite ammo overall */}
+        {topAmmoOverall.length>0 && <div className="card">
+          <div className="ct"><Icon name="ammo" size={15}/>Favourite Ammunition</div>
+          <p style={{fontSize:11,color:t.textMuted,marginBottom:10,fontStyle:"italic"}}>Based on rounds fired where an ammo batch was recorded against the session</p>
+          {topAmmoOverall.map((a,i)=>(
+            <div key={i} style={{marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:13,marginBottom:3}}>
+                <span style={{color:t.text}}>
+                  {i===0 && <span style={{marginRight:4}}>🥇</span>}
+                  {i===1 && <span style={{marginRight:4}}>🥈</span>}
+                  {i===2 && <span style={{marginRight:4}}>🥉</span>}
+                  {a.brand} {a.type}{a.weight?` ${a.weight}gr`:""}
+                </span>
+                <span style={{color:t.accent,fontFamily:ff,flexShrink:0,marginLeft:8}}>{a.rounds.toLocaleString()} rds</span>
+              </div>
+              <div style={{fontSize:10,color:t.textMuted,marginBottom:3}}>{a.calibre} · {a.sessions} session{a.sessions===1?"":"s"}</div>
+              <div className="pbg"><div className="pb" style={{width:`${(a.rounds/topAmmoOverall[0].rounds)*100}%`}}/></div>
+            </div>
+          ))}
+        </div>}
+
+        {/* Favourite ammo by calibre */}
+        {calibresWithAmmo.length>0 && <div className="card">
+          <div className="ct"><Icon name="ammo" size={15}/>Favourite Ammo by Calibre</div>
+          {calibresWithAmmo.map(cal=>{
+            const top = ammoByCalibre[cal][0];
+            const others = ammoByCalibre[cal].length - 1;
+            return <div key={cal} style={{padding:"8px 0",borderBottom:`1px solid ${t.border}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                <span style={{fontFamily:ff,fontSize:12,color:t.accent}}>{cal}</span>
+                <span style={{fontSize:11,color:t.textMuted}}>{top.rounds.toLocaleString()} rds</span>
+              </div>
+              <div style={{fontSize:13,color:t.text,marginTop:2}}>{top.brand} {top.type}{top.weight?` ${top.weight}gr`:""}</div>
+              {others>0 && <div style={{fontSize:10,color:t.textMuted,marginTop:2}}>+{others} other load{others===1?"":"s"} used in this calibre</div>}
+            </div>;
+          })}
         </div>}
 
         {/* Sessions by location */}
