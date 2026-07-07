@@ -1270,9 +1270,31 @@ function App() {
   }
 
   function Ammo() {
+    const stockByCalibre = {};
+    ammoStock.forEach(a=>{
+      const cal = a.calibre || "Unspecified";
+      stockByCalibre[cal] = (stockByCalibre[cal]||0) + (parseInt(a.qty)||0);
+    });
+    const stockList = Object.entries(stockByCalibre).sort((a,b)=>b[1]-a[1]);
+    const maxStock = stockList[0]?.[1] || 1;
+    const totalStock = ammoStock.reduce((a,x)=>a+(parseInt(x.qty)||0),0);
+
     return <div>
       <div className="hdr"><h1>Ammunition</h1><p>Stock Management</p></div>
       <div className="main">
+        {ammoStock.length>0 && <div className="card">
+          <div className="ct"><Icon name="ammo" size={15}/>Total Rounds by Calibre</div>
+          <div className="sb" style={{marginBottom:10}}><div className="val">{totalStock.toLocaleString()}</div><div className="sl">Total Rounds in Stock</div></div>
+          {stockList.map(([cal,qty])=>(
+            <div key={cal} style={{marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                <span style={{color:t.text}}>{cal}</span>
+                <span style={{color:qty<50?t.danger:t.accent,fontFamily:ff}}>{qty.toLocaleString()} rds</span>
+              </div>
+              <div className="pbg"><div className="pb" style={{width:`${(qty/maxStock)*100}%`,background:qty<50?t.danger:t.accent}}/></div>
+            </div>
+          ))}
+        </div>}
         <div className="sh">
           <div className="ct"><Icon name="ammo" size={15}/>Ammo Stock</div>
           <button className="btn" onClick={()=>{setNewAmmo(blankAmmo);setShowAmmoForm(true);}}><Icon name="plus" size={13}/>Add Stock</button>
@@ -2191,16 +2213,36 @@ function App() {
         </div>}
 
         {/* Ammo summary */}
-        {ammoStock.length>0 && <div className="card">
-          <div className="ct"><Icon name="ammo" size={15}/>Ammo Inventory Summary</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-            <div className="sb"><div className="val">{ammoStock.reduce((a,x)=>a+(parseInt(x.qty)||0),0).toLocaleString()}</div><div className="sl">Total in Stock</div></div>
-            <div className="sb"><div className="val">{ammoStock.length}</div><div className="sl">Distinct Batches</div></div>
-          </div>
-          {ammoStock.filter(a=>parseInt(a.qty)<50).length>0 && <div style={{background:t.danger+"22",border:`1px solid ${t.danger}`,borderRadius:8,padding:9,fontSize:12,color:t.danger}}>
-            ⚠ {ammoStock.filter(a=>parseInt(a.qty)<50).length} batch{ammoStock.filter(a=>parseInt(a.qty)<50).length>1?"es":""} below 50 rounds
-          </div>}
-        </div>}
+        {ammoStock.length>0 && (() => {
+          const stockByCalibre = {};
+          ammoStock.forEach(a=>{
+            const cal = a.calibre || "Unspecified";
+            stockByCalibre[cal] = (stockByCalibre[cal]||0) + (parseInt(a.qty)||0);
+          });
+          const stockList = Object.entries(stockByCalibre).sort((a,b)=>b[1]-a[1]);
+          const maxStock = stockList[0]?.[1] || 1;
+          return <div className="card">
+            <div className="ct"><Icon name="ammo" size={15}/>Ammo Inventory Summary</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+              <div className="sb"><div className="val">{ammoStock.reduce((a,x)=>a+(parseInt(x.qty)||0),0).toLocaleString()}</div><div className="sl">Total in Stock</div></div>
+              <div className="sb"><div className="val">{ammoStock.length}</div><div className="sl">Distinct Batches</div></div>
+            </div>
+            {ammoStock.filter(a=>parseInt(a.qty)<50).length>0 && <div style={{background:t.danger+"22",border:`1px solid ${t.danger}`,borderRadius:8,padding:9,fontSize:12,color:t.danger,marginBottom:10}}>
+              ⚠ {ammoStock.filter(a=>parseInt(a.qty)<50).length} batch{ammoStock.filter(a=>parseInt(a.qty)<50).length>1?"es":""} below 50 rounds
+            </div>}
+            <hr className="dvd"/>
+            <div className="lbl" style={{marginBottom:8,fontSize:11,color:t.accent}}>Rounds in Stock by Calibre</div>
+            {stockList.map(([cal,qty])=>(
+              <div key={cal} style={{marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                  <span style={{color:t.text}}>{cal}</span>
+                  <span style={{color:qty<50?t.danger:t.accent,fontFamily:ff}}>{qty.toLocaleString()} rds</span>
+                </div>
+                <div className="pbg"><div className="pb" style={{width:`${(qty/maxStock)*100}%`,background:qty<50?t.danger:t.accent}}/></div>
+              </div>
+            ))}
+          </div>;
+        })()}
 
         {sessions.length===0 && <div className="card"><div className="es">Log some sessions to see your stats</div></div>}
       </div>
